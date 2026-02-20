@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
 
 type Field = {
   key: string;
@@ -74,6 +74,20 @@ export default function DeployPage() {
           walletAddress: values.walletAddress ?? "",
         }),
       });
+
+      if (res.status === 409) {
+        const body = await res.json().catch(() => ({}));
+        // Agent already exists — go straight to its onboarding
+        if (body.agentId) {
+          pushLog(`▸ agent already exists — resuming`);
+          await delay(400);
+          pushLog(`▸ agent id: ${body.agentId}`);
+          await delay(600);
+          router.push(`/onboarding?agentId=${body.agentId}`);
+          return;
+        }
+        throw new Error(body.error ?? "Agent already exists");
+      }
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));

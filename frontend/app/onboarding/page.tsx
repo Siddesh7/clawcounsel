@@ -2,67 +2,85 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
 
 const QUESTIONS = [
-  {
-    key: "claimDescription",
-    label: "What is your primary legal claim or concern?",
-    hint: "e.g. copyright infringement, contract breach, IP theft",
-    type: "textarea",
-  },
-  {
-    key: "claimType",
-    label: "What type of legal issue is this?",
-    hint: "copyright | contract | ip | other",
-    type: "input",
-  },
-  {
-    key: "opposingParty",
-    label: "Who is the opposing party?",
-    hint: "Company name or individual",
-    type: "input",
-  },
-  {
-    key: "opposingGithubUsername",
-    label: "Do you have a GitHub username for the opposing party? (optional)",
-    hint: "@username — we'll monitor their repos for infringement",
-    type: "input",
-  },
-  {
-    key: "evidenceDescription",
-    label: "Describe the key evidence you have.",
-    hint: "Contracts, timestamps, screenshots, code commits, etc.",
-    type: "textarea",
-  },
+  { key: "claimDescription", label: "What is your primary legal claim or concern?", hint: "e.g. copyright infringement, contract breach, IP theft", type: "textarea" },
+  { key: "claimType",        label: "What type of legal issue is this?",            hint: "copyright · contract · ip · other",                   type: "input"    },
+  { key: "opposingParty",    label: "Who is the opposing party?",                   hint: "Company name or individual",                          type: "input"    },
+  { key: "opposingGithubUsername", label: "GitHub username of opposing party (optional)", hint: "@username — we'll monitor for infringement",   type: "input"    },
+  { key: "evidenceDescription",    label: "Describe the key evidence you have.",        hint: "Contracts, timestamps, code commits, screenshots", type: "textarea" },
 ];
+
+function Field({
+  q, value, onChange, disabled,
+}: {
+  q: (typeof QUESTIONS)[0]; value: string; onChange: (v: string) => void; disabled: boolean;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div>
+      <div style={{ fontSize: 11, letterSpacing: "0.15em", color: focused ? "var(--term-green)" : "var(--term-green-mid)", marginBottom: 6, fontWeight: 600, transition: "color 0.15s" }}>
+        {q.key.toUpperCase()}
+      </div>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, borderBottom: `1px solid ${focused ? "var(--term-green)" : "var(--term-green-dim)"}`, paddingBottom: 4, transition: "border-color 0.15s" }}>
+        <span style={{ color: focused ? "var(--term-green)" : "var(--term-green-dim)", marginTop: q.type === "textarea" ? 2 : 0, flexShrink: 0, transition: "color 0.15s" }}>▸</span>
+        {q.type === "textarea" ? (
+          <textarea
+            rows={3}
+            className="term-input"
+            style={{ resize: "none", lineHeight: 1.6 }}
+            placeholder={q.hint}
+            value={value}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+          />
+        ) : (
+          <input
+            className="term-input"
+            placeholder={q.hint}
+            value={value}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
 function OnboardingContent() {
   const router = useRouter();
   const params = useSearchParams();
   const agentId = params.get("agentId");
+
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [slackInstallUrl, setSlackInstallUrl] = useState<string | null>(null);
-  const [phase, setPhase] = useState<"questions" | "slack" | "done">("questions");
+  const [phase, setPhase] = useState<"questions" | "telegram">("questions");
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [connected, setConnected] = useState(false);
 
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? "OpenClawBot";
+
+  // Poll for Telegram connection
   useEffect(() => {
-    if (!agentId) return;
-    fetch(`${BACKEND_URL}/api/slack/install?agentId=${agentId}`)
-      .then((r) => r.json())
-      .then((d) => setSlackInstallUrl(d.installUrl))
-      .catch(() => {});
-  }, [agentId]);
-
-  const current = QUESTIONS[step];
+    if (phase !== "telegram" || !agentId || connected) return;
+    const interval = setInterval(async () => {
+      const res = await fetch(`${BACKEND_URL}/api/agents/${agentId}`).then((r) => r.json()).catch(() => null);
+      if (res?.agent?.telegramChatId) {
+        setConnected(true);
+        clearInterval(interval);
+        setTimeout(() => router.push(`/dashboard/${agentId}`), 1500);
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [phase, agentId, connected, router]);
 
   async function submitAnswers() {
     setLoading(true);
@@ -72,124 +90,164 @@ function OnboardingContent() {
       body: JSON.stringify({ ...answers, onboardingComplete: false }),
     });
     setLoading(false);
-    setPhase("slack");
+    setPhase("telegram");
   }
 
-  async function finishOnboarding() {
+  async function skipTelegram() {
     await fetch(`${BACKEND_URL}/api/agents/${agentId}/onboarding`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ onboardingComplete: true }),
     });
-    router.push(`/dashboard?agentId=${agentId}`);
+    router.push(`/dashboard/${agentId}`);
   }
 
-  if (!agentId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Missing agent ID.</p>
-      </div>
-    );
-  }
+  if (!agentId) return (
+    <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--term-bg)", fontFamily: "var(--font-mono), monospace", color: "var(--term-green)" }}>
+      <span>Missing agent ID.</span>
+    </main>
+  );
 
-  if (phase === "slack") {
+  if (phase === "telegram") {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-background p-6">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <Badge variant="outline" className="w-fit mb-2">Step 2 of 2</Badge>
-            <CardTitle>Connect Slack</CardTitle>
-            <CardDescription>
-              OpenClaw needs a Slack channel to send alerts and answer your team's legal questions.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {slackInstallUrl ? (
-              <a href={slackInstallUrl}>
-                <Button className="w-full">Add OpenClaw to Slack →</Button>
-              </a>
-            ) : (
-              <p className="text-sm text-muted-foreground">Loading Slack install link...</p>
-            )}
-            <Button variant="outline" className="w-full" onClick={finishOnboarding}>
-              Skip for now (set up later)
-            </Button>
-          </CardContent>
-        </Card>
+      <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--term-bg)", color: "var(--term-green)", fontFamily: "var(--font-mono), monospace" }}>
+        <div className="term-statusbar">
+          <span>CLAWCOUNSEL OS · /onboarding</span>
+          <span>STEP 2 OF 2 — TELEGRAM</span>
+        </div>
+
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "32px 20px" }}>
+          <div style={{ width: "100%", maxWidth: 540 }}>
+            <div className="term-box-glow" style={{ padding: "28px 24px" }}>
+              <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "var(--term-green-mid)", marginBottom: 20 }}>
+                CONNECT TELEGRAM
+              </div>
+
+              {connected ? (
+                <div style={{ textAlign: "center", padding: "16px 0" }}>
+                  <div className="term-glow-static" style={{ fontSize: 20, marginBottom: 8 }}>✓ CONNECTED</div>
+                  <div style={{ fontSize: 12, color: "var(--term-green-mid)" }}>Redirecting to dashboard<span className="cursor-blink" /></div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
+                    {/* Step 1 */}
+                    <div style={{ display: "flex", gap: 12 }}>
+                      <div style={{ fontSize: 11, color: "var(--term-amber)", letterSpacing: "0.1em", flexShrink: 0, paddingTop: 1 }}>01</div>
+                      <div>
+                        <div style={{ fontSize: 13, color: "var(--term-green)", marginBottom: 4 }}>Add the bot to your Telegram group</div>
+                        <div style={{ fontSize: 11, color: "var(--term-green-mid)" }}>Search for <span style={{ color: "var(--term-green)", fontWeight: 600 }}>@{botUsername}</span> and add to your company group</div>
+                      </div>
+                    </div>
+                    {/* Step 2 */}
+                    <div style={{ display: "flex", gap: 12 }}>
+                      <div style={{ fontSize: 11, color: "var(--term-amber)", letterSpacing: "0.1em", flexShrink: 0, paddingTop: 1 }}>02</div>
+                      <div>
+                        <div style={{ fontSize: 13, color: "var(--term-green)", marginBottom: 4 }}>Send the connect command in the group</div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            background: "rgba(0,255,65,0.06)",
+                            border: "1px solid var(--term-green-dim)",
+                            padding: "8px 12px",
+                            letterSpacing: "0.05em",
+                            wordBreak: "break-all",
+                            marginTop: 6,
+                          }}
+                        >
+                          /connect {agentId}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Step 3 */}
+                    <div style={{ display: "flex", gap: 12 }}>
+                      <div style={{ fontSize: 11, color: "var(--term-amber)", letterSpacing: "0.1em", flexShrink: 0, paddingTop: 1 }}>03</div>
+                      <div>
+                        <div style={{ fontSize: 13, color: "var(--term-green)", marginBottom: 4 }}>OpenClaw starts learning</div>
+                        <div style={{ fontSize: 11, color: "var(--term-green-mid)" }}>The agent will index all future messages and answer legal questions via <span style={{ color: "var(--term-green)" }}>/ask</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ borderTop: "1px solid var(--term-border)", paddingTop: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ fontSize: 11, color: "var(--term-green-dim)" }}>
+                      <span className="cursor-blink" /> waiting for connection...
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 16 }}>
+                    <button className="term-btn" style={{ width: "100%", fontSize: 12, padding: "10px" }} onClick={skipTelegram}>
+                      <span>SKIP FOR NOW — SET UP LATER</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       </main>
     );
   }
 
-  return (
-    <main className="min-h-screen flex items-center justify-center bg-background p-6">
-      <div className="w-full max-w-lg space-y-4">
-        <div className="flex items-center gap-2">
-          <Badge variant="outline">Step 1 of 2</Badge>
-          <span className="text-sm text-muted-foreground">
-            Question {step + 1} of {QUESTIONS.length}
-          </span>
-        </div>
+  const current = QUESTIONS[step];
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{current.label}</CardTitle>
-            <CardDescription>{current.hint}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="answer">Your answer</Label>
-              {current.type === "textarea" ? (
-                <Textarea
-                  id="answer"
-                  rows={4}
-                  value={answers[current.key] ?? ""}
-                  onChange={(e) =>
-                    setAnswers((prev) => ({ ...prev, [current.key]: e.target.value }))
-                  }
-                  placeholder="Type here..."
-                />
-              ) : (
-                <Input
-                  id="answer"
-                  value={answers[current.key] ?? ""}
-                  onChange={(e) =>
-                    setAnswers((prev) => ({ ...prev, [current.key]: e.target.value }))
-                  }
-                  placeholder="Type here..."
-                />
-              )}
+  return (
+    <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--term-bg)", color: "var(--term-green)", fontFamily: "var(--font-mono), monospace" }}>
+      <div className="term-statusbar">
+        <span>CLAWCOUNSEL OS · /onboarding</span>
+        <span>STEP 1 OF 2 — CLAIM INTAKE · Q{step + 1}/{QUESTIONS.length}</span>
+      </div>
+
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "32px 20px" }}>
+        <div style={{ width: "100%", maxWidth: 560 }}>
+          <div className="term-box-glow" style={{ padding: "28px 24px" }}>
+            <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "var(--term-green-mid)", marginBottom: 20 }}>
+              LEGAL CLAIM INTAKE
             </div>
 
-            <div className="flex gap-2">
+            <div style={{ marginBottom: 8, fontSize: 14, color: "var(--term-green)", lineHeight: 1.5 }}>
+              {current.label}
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <Field
+                q={current}
+                value={answers[current.key] ?? ""}
+                onChange={(v) => setAnswers((prev) => ({ ...prev, [current.key]: v }))}
+                disabled={loading}
+              />
+            </div>
+
+            {/* Progress dots */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+              {QUESTIONS.map((_, i) => (
+                <div key={i} style={{ width: 6, height: 6, background: i <= step ? "var(--term-green)" : "var(--term-green-dim)", transition: "background 0.2s" }} />
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
               {step > 0 && (
-                <Button variant="outline" onClick={() => setStep((s) => s - 1)}>
-                  Back
-                </Button>
+                <button className="term-btn" style={{ fontSize: 12, padding: "9px 20px" }} onClick={() => setStep((s) => s - 1)} disabled={loading}>
+                  <span>← BACK</span>
+                </button>
               )}
               {step < QUESTIONS.length - 1 ? (
-                <Button
-                  className="flex-1"
-                  onClick={() => setStep((s) => s + 1)}
-                >
-                  Next →
-                </Button>
+                <button className="term-btn" style={{ flex: 1, fontSize: 12, padding: "9px" }} onClick={() => setStep((s) => s + 1)}>
+                  <span>NEXT →</span>
+                </button>
               ) : (
-                <Button className="flex-1" onClick={submitAnswers} disabled={loading}>
-                  {loading ? "Saving..." : "Continue to Slack Setup →"}
-                </Button>
+                <button className="term-btn" style={{ flex: 1, fontSize: 12, padding: "9px" }} onClick={submitAnswers} disabled={loading}>
+                  <span>{loading ? "SAVING..." : "CONTINUE TO TELEGRAM →"}</span>
+                </button>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </main>
   );
 }
 
 export default function OnboardingPage() {
-  return (
-    <Suspense>
-      <OnboardingContent />
-    </Suspense>
-  );
+  return <Suspense><OnboardingContent /></Suspense>;
 }

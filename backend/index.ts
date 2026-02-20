@@ -2,10 +2,9 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import { agentRoutes } from "./src/routes/agents";
-import { slackRoutes } from "./src/routes/slack";
+import { telegramRoutes } from "./src/routes/telegram";
 import { documentRoutes } from "./src/routes/documents";
 
-// Bun auto-loads .env
 const fastify = Fastify({ logger: true });
 
 await fastify.register(cors, {
@@ -18,7 +17,7 @@ await fastify.register(jwt, {
 });
 
 await fastify.register(agentRoutes, { prefix: "/api" });
-await fastify.register(slackRoutes, { prefix: "/api" });
+await fastify.register(telegramRoutes, { prefix: "/api" });
 await fastify.register(documentRoutes, { prefix: "/api" });
 
 fastify.get("/health", async () => ({ status: "ok" }));

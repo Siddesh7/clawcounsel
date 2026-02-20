@@ -1,0 +1,148 @@
+import type { FastifyInstance } from "fastify";
+import { db } from "../db";
+import { agents } from "../db/schema";
+import { eq } from "drizzle-orm";
+import { ingestTelegramMessage } from "../services/ingestion";
+import { askAgent } from "../services/agent";
+
+const BOT_TOKEN = () => process.env.TELEGRAM_BOT_TOKEN!;
+const TG = (method: string) => `https://api.telegram.org/bot${BOT_TOKEN()}/${method}`;
+
+async function send(chatId: number | string, text: string, replyToMessageId?: number) {
+  await fetch(TG("sendMessage"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      reply_to_message_id: replyToMessageId,
+    }),
+  });
+}
+
+export async function telegramRoutes(fastify: FastifyInstance) {
+
+  // ── Register webhook with Telegram ────────────────────────
+  fastify.get("/telegram/set-webhook", async (request) => {
+    const { secret } = request.query as any;
+    if (secret !== process.env.WEBHOOK_SECRET) {
+      return { error: "unauthorized" };
+    }
+    const webhookUrl = `${process.env.BACKEND_URL}/api/telegram/webhook`;
+    const res = await fetch(TG("setWebhook"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: webhookUrl, allowed_updates: ["message"] }),
+    });
+    return res.json();
+  });
+
+  // ── Telegram webhook ──────────────────────────────────────
+  fastify.post("/telegram/webhook", async (request) => {
+    const update = request.body as any;
+    const message = update?.message;
+    if (!message?.text) return { ok: true };
+
+    const chatId    = message.chat.id;
+    const chatTitle = message.chat.title ?? message.chat.username ?? "DM";
+    const userId    = String(message.from?.id ?? "unknown");
+    const username  = message.from?.username ?? message.from?.first_name ?? userId;
+    const text      = message.text as string;
+    const messageId = String(message.message_id);
+    const threadId  = message.message_thread_id ? String(message.message_thread_id) : undefined;
+
+    // ── /connect {agentId} — link this group to an agent ──
+    if (text.startsWith("/connect")) {
+      const agentId = text.split(" ")[1]?.trim();
+      if (!agentId) {
+        await send(chatId, "Usage: /connect {agentId}\n\nGet your agent ID from the ClawCounsel dashboard.");
+        return { ok: true };
+      }
+
+      const [agent] = await db.select().from(agents).where(eq(agents.id, agentId));
+      if (!agent) {
+        await send(chatId, `No agent found with ID: ${agentId}\n\nDouble-check the ID on your dashboard.`);
+        return { ok: true };
+      }
+
+      if (agent.telegramChatId && agent.telegramChatId !== String(chatId)) {
+        await send(chatId, `This agent is already connected to a different group.`);
+        return { ok: true };
+      }
+
+      await db.update(agents).set({
+        telegramChatId:    String(chatId),
+        telegramChatTitle: chatTitle,
+        status:            "active",
+      }).where(eq(agents.id, agentId));
+
+      await send(
+        chatId,
+        `OpenClaw is now connected to ${agent.companyName}.\n\nI'll learn from every message in this group and build a legal knowledge base for your company.\n\nAsk me anything by tagging me or using /ask — I'll answer based on your company's contracts, policies, and communications.`
+      );
+
+      return { ok: true };
+    }
+
+    // Find agent for this chat
+    const [agent] = await db
+      .select()
+      .from(agents)
+      .where(eq(agents.telegramChatId, String(chatId)));
+
+    if (!agent) return { ok: true }; // bot is in a group it's not linked to yet
+
+    // ── Ingest every message into the knowledge base ──────
+    await ingestTelegramMessage({
+      agentId:  agent.id,
+      chatId:   String(chatId),
+      chatTitle,
+      userId,
+      username,
+      messageId,
+      text,
+      threadId,
+    });
+
+    // ── Respond to /ask or direct @mentions ──────────────
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? "";
+    const isMention   = text.includes(`@${botUsername}`);
+    const isAskCmd    = text.startsWith("/ask");
+
+    if (isAskCmd || isMention) {
+      const question = text
+        .replace(/^\/ask\s*/i, "")
+        .replace(new RegExp(`@${botUsername}`, "g"), "")
+        .trim();
+
+      if (!question) {
+        await send(chatId, "Ask me a legal question: /ask Is our NDA with Acme Corp still valid?", message.message_id);
+        return { ok: true };
+      }
+
+      // Thinking indicator
+      await send(chatId, "Analyzing...", message.message_id);
+
+      try {
+        const answer = await askAgent(agent.id, userId, String(chatId), question);
+        await send(chatId, answer, message.message_id);
+      } catch (e) {
+        console.error("[agent] error:", e);
+        await send(chatId, "Error processing your question. Please try again.", message.message_id);
+      }
+    }
+
+    return { ok: true };
+  });
+
+  // ── Get agent by telegram chat id (for status checks) ──
+  fastify.get("/telegram/status/:chatId", async (request, reply) => {
+    const { chatId } = request.params as any;
+    const [agent] = await db
+      .select()
+      .from(agents)
+      .where(eq(agents.telegramChatId, chatId));
+    if (!agent) return reply.code(404).send({ connected: false });
+    return { connected: true, agentId: agent.id, companyName: agent.companyName };
+  });
+}

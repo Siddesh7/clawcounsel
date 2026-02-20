@@ -4,16 +4,48 @@ import { agents, onboardingData } from "../db/schema";
 import { eq } from "drizzle-orm";
 
 export async function agentRoutes(fastify: FastifyInstance) {
+  // List all agents with their onboarding data
+  fastify.get("/agents", async () => {
+    const rows = await db
+      .select()
+      .from(agents)
+      .leftJoin(onboardingData, eq(onboardingData.agentId, agents.id));
+
+    return {
+      agents: rows.map((r) => ({
+        ...r.agents,
+        onboarding: r.onboarding_data ?? null,
+      })),
+    };
+  });
+
   // Deploy a new OpenClaw agent instance for a company
   fastify.post("/agents", async (request, reply) => {
     const { companyName, companyId, walletAddress } = request.body as any;
 
+    if (!companyName || !companyId) {
+      return reply.code(400).send({ error: "companyName and companyId are required" });
+    }
+
+    // Check for existing agent with same companyId
+    const [existing] = await db.select().from(agents).where(eq(agents.companyId, companyId));
+    if (existing) {
+      return reply.code(409).send({
+        error: `An agent with company ID "${companyId}" already exists.`,
+        agentId: existing.id,
+      });
+    }
+
     const [agent] = await db
       .insert(agents)
-      .values({ companyName, companyId, walletAddress, status: "pending" })
+      .values({
+        companyName,
+        companyId,
+        walletAddress: walletAddress || null,
+        status: "pending",
+      })
       .returning();
 
-    // TODO: Trigger NFT mint via OG Labs + deploy sandbox instance
     return reply.code(201).send({ agent });
   });
 

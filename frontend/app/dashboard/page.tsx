@@ -1,121 +1,231 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
 
-function DashboardContent() {
-  const params = useSearchParams();
-  const agentId = params.get("agentId");
-  const [agent, setAgent] = useState<any>(null);
-  const [alerts, setAlerts] = useState<any[]>([]);
+type Agent = {
+  id: string;
+  companyName: string;
+  companyId: string;
+  status: string;
+  telegramChatId: string | null;
+  telegramChatTitle: string | null;
+  nftTokenId: string | null;
+  createdAt: string;
+  onboarding: {
+    claimDescription?: string;
+    claimType?: string;
+    opposingParty?: string;
+    onboardingComplete?: boolean;
+  } | null;
+};
 
-  useEffect(() => {
-    if (!agentId) return;
-    fetch(`${BACKEND_URL}/api/agents/${agentId}`)
-      .then((r) => r.json())
-      .then((d) => setAgent(d.agent))
-      .catch(() => {});
-  }, [agentId]);
-
-  const severityColor: Record<string, string> = {
-    low: "secondary",
-    medium: "outline",
-    high: "destructive",
-    critical: "destructive",
-  };
-
-  return (
-    <main className="min-h-screen bg-background p-6">
-      <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">OpenClaw Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              {agent ? agent.companyName : "Loading..."}
-            </p>
-          </div>
-          <Badge variant={agent?.status === "active" ? "default" : "outline"}>
-            {agent?.status ?? "—"}
-          </Badge>
-        </div>
-
-        {/* Agent Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Agent Status</CardTitle>
-            <CardDescription>Your OpenClaw sandbox instance</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Agent ID</span>
-              <span className="font-mono text-xs">{agentId}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Slack</span>
-              <span>{agent?.slackTeamId ? "Connected" : "Not connected"}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">NFT Token</span>
-              <span>{agent?.nftTokenId ?? "Pending mint"}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Alerts */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Alerts</CardTitle>
-            <CardDescription>Legal signals from your documents and Slack</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {alerts.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No alerts yet. Once your documents are ingested, OpenClaw will monitor and surface critical signals here.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {alerts.map((alert) => (
-                  <div key={alert.id} className="flex items-start justify-between gap-4 border rounded-md p-3">
-                    <div>
-                      <p className="font-medium text-sm">{alert.title}</p>
-                      <p className="text-xs text-muted-foreground">{alert.description}</p>
-                    </div>
-                    <Badge variant={severityColor[alert.severity] as any}>
-                      {alert.severity}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Upload Documents */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ingest Documents</CardTitle>
-            <CardDescription>Feed contracts, PDFs, or GitHub repos to OpenClaw</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" disabled>
-              Upload Document (coming soon)
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    </main>
-  );
-}
+const STATUS_COLOR: Record<string, string> = {
+  active:     "#00ff41",
+  onboarding: "var(--term-amber)",
+  pending:    "var(--term-green-mid)",
+};
 
 export default function DashboardPage() {
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/agents`)
+      .then((r) => r.json())
+      .then((d) => setAgents(d.agents ?? []))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
-    <Suspense>
-      <DashboardContent />
-    </Suspense>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--term-bg)",
+        color: "var(--term-green)",
+        fontFamily: "var(--font-mono), monospace",
+      }}
+    >
+      {/* Status bar */}
+      <div className="term-statusbar">
+        <span>
+          <Link href="/" style={{ color: "var(--term-bg)", textDecoration: "none", marginRight: 16 }}>
+            ← HOME
+          </Link>
+          /dashboard
+        </span>
+        <span style={{ display: "flex", gap: 20 }}>
+          <span>{agents.length} AGENT{agents.length !== 1 ? "S" : ""}</span>
+          <span style={{ color: "#00ff41" }}>● ONLINE</span>
+        </span>
+      </div>
+
+      <div
+        style={{
+          flex: 1,
+          maxWidth: 900,
+          width: "100%",
+          margin: "0 auto",
+          padding: "32px 20px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 24,
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <div>
+            <div className="font-display term-glow-static" style={{ fontSize: 40, letterSpacing: "0.05em", lineHeight: 1 }}>
+              CLAIMS
+            </div>
+            <div style={{ fontSize: 11, color: "var(--term-green-mid)", letterSpacing: "0.2em", marginTop: 4 }}>
+              ALL OPENCLAW AGENTS · LEGAL CLAIM REGISTRY
+            </div>
+          </div>
+          <Link href="/deploy">
+            <button className="term-btn" style={{ fontSize: 12, padding: "8px 20px", letterSpacing: "0.15em" }}>
+              <span>+ DEPLOY NEW</span>
+            </button>
+          </Link>
+        </div>
+
+        {loading ? (
+          <div style={{ fontSize: 13, color: "var(--term-green-mid)", paddingTop: 20 }}>
+            <span className="cursor-blink" />
+          </div>
+        ) : agents.length === 0 ? (
+          <div className="term-box-glow" style={{ padding: "32px 24px", textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: "var(--term-green-mid)" }}>▸ no agents deployed yet</div>
+            <div style={{ marginTop: 12 }}>
+              <Link href="/deploy">
+                <button className="term-btn" style={{ fontSize: 12, padding: "8px 24px" }}>
+                  <span>DEPLOY YOUR FIRST AGENT</span>
+                </button>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Table header */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 140px 140px 100px 40px",
+                gap: 12,
+                padding: "8px 16px",
+                borderBottom: "1px solid var(--term-green-dim)",
+                fontSize: 10,
+                letterSpacing: "0.2em",
+                color: "var(--term-green-mid)",
+              }}
+            >
+              <span>COMPANY · CLAIM</span>
+              <span>OPPOSING PARTY</span>
+              <span>TYPE</span>
+              <span>STATUS</span>
+              <span />
+            </div>
+
+            {/* Rows */}
+            {agents.map((agent) => (
+              <Link
+                key={agent.id}
+                href={`/dashboard/${agent.id}`}
+                style={{ textDecoration: "none" }}
+              >
+                <div
+                  className="term-box"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 140px 140px 100px 40px",
+                    gap: 12,
+                    padding: "14px 16px",
+                    cursor: "pointer",
+                    transition: "background 0.1s, border-color 0.1s",
+                    borderColor: "var(--term-border)",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.background = "rgba(0,255,65,0.04)";
+                    (e.currentTarget as HTMLDivElement).style.borderColor = "var(--term-green-dim)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.background = "var(--term-surface)";
+                    (e.currentTarget as HTMLDivElement).style.borderColor = "var(--term-border)";
+                  }}
+                >
+                  {/* Company + claim preview */}
+                  <div style={{ overflow: "hidden" }}>
+                    <div style={{ fontSize: 13, color: "var(--term-green)", fontWeight: 500 }}>
+                      {agent.companyName}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--term-green-mid)",
+                        marginTop: 3,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {agent.onboarding?.claimDescription
+                        ? `▸ ${agent.onboarding.claimDescription}`
+                        : "▸ no claim data"}
+                    </div>
+                  </div>
+
+                  {/* Opposing party */}
+                  <div style={{ fontSize: 12, color: "var(--term-green-mid)", alignSelf: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {agent.onboarding?.opposingParty ?? "—"}
+                  </div>
+
+                  {/* Claim type */}
+                  <div style={{ fontSize: 11, color: "var(--term-green-mid)", alignSelf: "center", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                    {agent.onboarding?.claimType ?? "—"}
+                  </div>
+
+                  {/* Status */}
+                  <div
+                    style={{
+                      fontSize: 11,
+                      alignSelf: "center",
+                      letterSpacing: "0.1em",
+                      color: STATUS_COLOR[agent.status] ?? "var(--term-green-mid)",
+                    }}
+                  >
+                    {agent.status.toUpperCase()}
+                  </div>
+
+                  {/* Arrow */}
+                  <div style={{ fontSize: 14, color: "var(--term-green-dim)", alignSelf: "center", textAlign: "right" }}>
+                    →
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div
+        style={{
+          borderTop: "1px solid var(--term-border)",
+          padding: "10px 16px",
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: 11,
+          color: "var(--term-green-dim)",
+          letterSpacing: "0.08em",
+        }}
+      >
+        <span>CLAWCOUNSEL OS</span>
+        <span>OG LABS iNFT · KITE · CLAUDE</span>
+      </div>
+    </main>
   );
 }
