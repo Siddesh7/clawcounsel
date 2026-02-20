@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/ethdenver -o StrictHostKeyChecking=no\" git clone:*)",
+      "Bash(git config:*)",
+      "Bash(bunx --bun shadcn@latest create:*)",
+      "Bash(bun add:*)",
+      "Bash(bunx:*)",
+      "Bash(bun run build:*)"
+    ]
+  }
+}
