@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { agents } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { mintAgentNft, isInftMintConfigured } from "@/lib/inftMint";
+import { verifyAgentOwnership } from "@/lib/verify-ownership";
 import {
   INFT_CONTRACT_ADDRESS,
   INFT_CHAIN_ID,
@@ -13,6 +14,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  const check = await verifyAgentOwnership(req, id);
+  if (!check.authorized) return check.response;
+  const agent = check.agent;
+
   if (!isInftMintConfigured()) {
     return NextResponse.json(
       {
@@ -21,11 +27,6 @@ export async function POST(
       },
       { status: 503 },
     );
-  }
-
-  const [agent] = await db.select().from(agents).where(eq(agents.id, id));
-  if (!agent) {
-    return NextResponse.json({ error: "Agent not found" }, { status: 404 });
   }
   if (agent.nftTokenId) {
     return NextResponse.json(

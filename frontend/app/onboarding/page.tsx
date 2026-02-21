@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useWallets } from "@privy-io/react-auth";
 import { BACKEND_URL } from "@/lib/constants";
 
 const QUESTIONS = [
@@ -15,6 +16,7 @@ const QUESTIONS = [
 function OnboardingContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const { wallets } = useWallets();
   const agentId = params.get("agentId");
 
   const [step, setStep] = useState(0);
@@ -25,6 +27,10 @@ function OnboardingContent() {
   const [uploadLog, setUploadLog] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const wallet = wallets.find((w) => w.walletClientType !== "privy") ?? wallets[0];
+  const ownerHeaders: HeadersInit = wallet?.address
+    ? { "x-wallet-address": wallet.address }
+    : {};
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? "clawcounselBot";
 
   useEffect(() => {
@@ -44,7 +50,7 @@ function OnboardingContent() {
     setLoading(true);
     await fetch(`${BACKEND_URL}/api/agents/${agentId}/onboarding`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...ownerHeaders },
       body: JSON.stringify({ ...answers, onboardingComplete: false }),
     });
     setLoading(false);
@@ -64,6 +70,7 @@ function OnboardingContent() {
     try {
       const res = await fetch(`${BACKEND_URL}/api/agents/${agentId}/documents/upload`, {
         method: "POST",
+        headers: ownerHeaders,
         body: formData,
       });
       const data = await res.json();
@@ -82,7 +89,7 @@ function OnboardingContent() {
   async function skipTelegram() {
     await fetch(`${BACKEND_URL}/api/agents/${agentId}/onboarding`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...ownerHeaders },
       body: JSON.stringify({ onboardingComplete: true }),
     });
     router.push(`/dashboard/${agentId}`);

@@ -46,11 +46,14 @@ export function INFTCard({ agentId, agentWallet, inft, onUpdate }: Props) {
     setMintError("");
     setMinting(true);
     try {
+      const activeWallet = wallets?.find((w) => w.walletClientType !== "privy") ?? wallets?.[0];
       const body: { to?: string } = {};
-      if (authenticated && wallets?.[0]?.address) body.to = wallets[0].address;
+      if (authenticated && activeWallet?.address) body.to = activeWallet.address;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (activeWallet?.address) headers["x-wallet-address"] = activeWallet.address;
       const res = await fetch(`${BACKEND_URL}/api/agents/${agentId}/mint-inft`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));

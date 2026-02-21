@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractAndStore } from "@/lib/services/pdf";
+import { verifyAgentOwnership } from "@/lib/verify-ownership";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  const check = await verifyAgentOwnership(req, id);
+  if (!check.authorized) return check.response;
+
   const formData = await req.formData();
   const results: Array<{ name: string; chunks: number; method: string }> = [];
 

@@ -4,11 +4,19 @@ import { agents, onboardingData } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { mintAgentNft, isInftMintConfigured } from "@/lib/inftMint";
 
-export async function GET() {
-  const rows = await db
+export async function GET(req: NextRequest) {
+  const wallet = req.nextUrl.searchParams.get("wallet");
+
+  let query = db
     .select()
     .from(agents)
     .leftJoin(onboardingData, eq(onboardingData.agentId, agents.id));
+
+  if (wallet) {
+    query = query.where(eq(agents.walletAddress, wallet)) as typeof query;
+  }
+
+  const rows = await query;
 
   return NextResponse.json({
     agents: rows.map((r) => ({

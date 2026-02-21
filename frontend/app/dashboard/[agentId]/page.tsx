@@ -3,8 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { BACKEND_URL } from "@/lib/constants";
 import { INFTCard } from "./inft-card";
+import { OwnerControls } from "./owner-controls";
 
 type Alert = {
   id: string;
@@ -43,14 +45,17 @@ function Row({ label, value }: { label: string; value?: string }) {
 
 export default function AgentDetailPage() {
   const { agentId } = useParams<{ agentId: string }>();
+  const { login, authenticated, ready } = usePrivy();
+  const { wallets } = useWallets();
   const [agent, setAgent] = useState<any>(null);
   const [onboarding, setOnboarding] = useState<any>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [inft, setInft] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sweeping, setSweeping] = useState(false);
+  const [ownerVerified, setOwnerVerified] = useState<boolean | null>(null);
 
-  console.log("inft",inft);
+  const wallet = wallets.find((w) => w.walletClientType !== "privy") ?? wallets[0];
 
   const fetchInft = useCallback(() => {
     if (!agentId) return;
@@ -74,14 +79,76 @@ export default function AgentDetailPage() {
     fetchInft();
   }, [agentId, fetchInft]);
 
+  useEffect(() => {
+    if (!agentId || !wallet?.address) {
+      setOwnerVerified(null);
+      return;
+    }
+    fetch(`${BACKEND_URL}/api/agents/${agentId}/verify-owner`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ walletAddress: wallet.address }),
+    })
+      .then((r) => r.json())
+      .then((d) => setOwnerVerified(d.owner === true))
+      .catch(() => setOwnerVerified(false));
+  }, [agentId, wallet?.address]);
+
+  const ownerHeaders: HeadersInit = wallet?.address
+    ? { "x-wallet-address": wallet.address }
+    : {};
+
   async function triggerSweep() {
     setSweeping(true);
-    await fetch(`${BACKEND_URL}/api/agents/${agentId}/monitor`, { method: "POST" });
+    await fetch(`${BACKEND_URL}/api/agents/${agentId}/monitor`, {
+      method: "POST",
+      headers: ownerHeaders,
+    });
     setTimeout(async () => {
       const res = await fetch(`${BACKEND_URL}/api/agents/${agentId}/alerts`).then((r) => r.json());
       setAlerts(res.alerts ?? []);
       setSweeping(false);
     }, 5000);
+  }
+
+  if (ready && !authenticated) {
+    return (
+      <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--term-bg)", color: "var(--term-green)", fontFamily: "var(--font-mono), monospace", gap: 20 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "var(--term-amber)" }}>ACCESS DENIED</div>
+        <div style={{ fontSize: 13, color: "var(--term-green-mid)", textAlign: "center", maxWidth: 400 }}>
+          Connect your wallet to verify ownership of this agent.
+        </div>
+        <button className="term-btn" style={{ fontSize: 13, padding: "10px 32px", letterSpacing: "0.15em" }} onClick={() => login()}>
+          <span>[ CONNECT WALLET ]</span>
+        </button>
+      </main>
+    );
+  }
+
+  if (authenticated && ownerVerified === null) {
+    return (
+      <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--term-bg)", color: "var(--term-green)", fontFamily: "var(--font-mono), monospace", gap: 12 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "var(--term-green-mid)" }}>VERIFYING OWNERSHIP</div>
+        <div style={{ fontSize: 13, color: "var(--term-green-dim)" }}>Checking NFT ownership on-chain<span className="cursor-blink" /></div>
+      </main>
+    );
+  }
+
+  if (ownerVerified === false) {
+    return (
+      <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--term-bg)", color: "var(--term-green)", fontFamily: "var(--font-mono), monospace", gap: 16 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "#ff4444" }}>ACCESS DENIED</div>
+        <div style={{ fontSize: 13, color: "var(--term-green-mid)", textAlign: "center", maxWidth: 440 }}>
+          Wallet <span style={{ color: "var(--term-green)" }}>{wallet?.address?.slice(0, 6)}...{wallet?.address?.slice(-4)}</span> does not own this agent&apos;s NFT.
+        </div>
+        <div style={{ fontSize: 11, color: "var(--term-green-dim)", textAlign: "center", maxWidth: 440 }}>
+          Only the NFT holder can access the agent dashboard and configure the agent.
+        </div>
+        <Link href="/dashboard">
+          <button className="term-btn" style={{ fontSize: 12, padding: "8px 24px" }}><span>← BACK TO AGENTS</span></button>
+        </Link>
+      </main>
+    );
   }
 
   return (
@@ -168,6 +235,15 @@ export default function AgentDetailPage() {
               agentWallet={agent?.walletAddress ?? null}
               inft={inft}
               onUpdate={fetchInft}
+            />
+
+            <OwnerControls
+              agentId={agentId!}
+              agent={agent}
+              onboarding={onboarding}
+              ownerHeaders={ownerHeaders}
+              onAgentUpdate={setAgent}
+              onOnboardingUpdate={setOnboarding}
             />
 
             <div className="term-box-glow" style={{ padding: "16px 20px" }}>

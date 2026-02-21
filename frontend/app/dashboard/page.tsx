@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { BACKEND_URL } from "@/lib/constants";
 
 type Agent = {
@@ -32,15 +33,37 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const { login, authenticated, ready } = usePrivy();
+  const { wallets } = useWallets();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const wallet = wallets.find((w) => w.walletClientType !== "privy") ?? wallets[0];
+
   useEffect(() => {
-    fetch(`${BACKEND_URL}/api/agents`)
+    if (!wallet?.address) {
+      setLoading(false);
+      return;
+    }
+    fetch(`${BACKEND_URL}/api/agents?wallet=${wallet.address}`)
       .then((r) => r.json())
       .then((d) => setAgents(d.agents ?? []))
       .finally(() => setLoading(false));
-  }, []);
+  }, [wallet?.address]);
+
+  if (ready && !authenticated) {
+    return (
+      <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "var(--term-bg)", color: "var(--term-green)", fontFamily: "var(--font-mono), monospace", gap: 20 }}>
+        <div className="font-display term-glow-static" style={{ fontSize: 32, letterSpacing: "0.05em" }}>AGENTS</div>
+        <div style={{ fontSize: 13, color: "var(--term-green-mid)", textAlign: "center", maxWidth: 400 }}>
+          Connect your wallet to view agents you own.
+        </div>
+        <button className="term-btn" style={{ fontSize: 13, padding: "10px 32px", letterSpacing: "0.15em" }} onClick={() => login()}>
+          <span>[ CONNECT WALLET ]</span>
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--term-bg)", color: "var(--term-green)", fontFamily: "var(--font-mono), monospace" }}>
