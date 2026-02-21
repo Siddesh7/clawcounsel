@@ -29,26 +29,21 @@ export async function GET(
       { status: 500 },
     );
   }
-  const info = await getINFTTokenInfo(tokenId);
-  if (!info) {
-    return NextResponse.json(
-      { error: "INFT token not found or contract not configured" },
-      { status: 404 },
-    );
-  }
   const explorerUrl =
     process.env.NEXT_PUBLIC_0G_EXPLORER_URL ?? "https://chainscan.0g.ai";
+  const info = await getINFTTokenInfo(tokenId).catch(() => null);
   return NextResponse.json({
     linked: true,
     agentId: id,
     tokenId,
     contractAddress: INFT_CONTRACT_ADDRESS,
     chainId: INFT_CHAIN_ID,
-    owner: info.owner,
-    tokenURI: info.tokenURI,
-    dataHashes: info.dataHashes,
-    dataDescriptions: info.dataDescriptions,
+    owner: info?.owner ?? agent.walletAddress ?? null,
+    tokenURI: info?.tokenURI ?? null,
+    dataHashes: info?.dataHashes ?? [],
+    dataDescriptions: info?.dataDescriptions ?? [],
     explorerContractUrl: `${explorerUrl}/token/${INFT_CONTRACT_ADDRESS}`,
+    onChainVerified: !!info,
   });
 }
 

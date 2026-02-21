@@ -16,9 +16,10 @@ type InftData =
   | {
       linked: true;
       tokenId: number;
-      owner: string;
+      owner: string | null;
       explorerContractUrl?: string;
       dataHashes: readonly string[];
+      onChainVerified?: boolean;
     };
 
 type Props = {
@@ -40,7 +41,8 @@ export function INFTCard({ agentId, agentWallet, inft, onUpdate }: Props) {
   const isOwner =
     inft?.linked &&
     wallets?.[0]?.address &&
-    inft.owner?.toLowerCase() === wallets[0].address.toLowerCase();
+    !!inft.owner &&
+    inft.owner.toLowerCase() === wallets[0].address.toLowerCase();
 
   async function handleMint() {
     setMintError("");
@@ -128,7 +130,7 @@ export function INFTCard({ agentId, agentWallet, inft, onUpdate }: Props) {
             <span style={{ color: "var(--term-green-mid)" }}>TOKEN</span>
             <span style={{ color: "var(--term-green)" }}>#{inft.tokenId}</span>
             <span style={{ color: "var(--term-green-mid)" }}>OWNER</span>
-            <span style={{ fontSize: 11 }}>{inft.owner.slice(0, 10)}…{inft.owner.slice(-8)}</span>
+            <span style={{ fontSize: 11 }}>{inft.owner ? `${inft.owner.slice(0, 10)}…${inft.owner.slice(-8)}` : "—"}</span>
           </div>
           {(lastMintTxUrl ?? inft.explorerContractUrl) && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
