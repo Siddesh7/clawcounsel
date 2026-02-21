@@ -94,19 +94,54 @@ clawcounsel/
 
 ## Environment Variables
 
-Required in `frontend/.env.local`:
-- `ANTHROPIC_API_KEY` — Claude API key for identity gen + fallback
-- `TELEGRAM_BOT_TOKEN` — from BotFather (optional for local dev)
-- `NEXT_PUBLIC_PRIVY_APP_ID` — Privy dashboard
-- `NEXT_PUBLIC_TREASURY_ADDRESS` — USDC recipient wallet
+Create `frontend/.env.local`:
 
-## Running
-
-```bash
-cd frontend
-pnpm install
-pnpm dev
-# Visit http://localhost:3000
+```
+ANTHROPIC_API_KEY=sk-ant-...           # Claude API key (identity gen + AI fallback)
+NEXT_PUBLIC_PRIVY_APP_ID=...           # from privy.io dashboard (wallet connection)
+NEXT_PUBLIC_TREASURY_ADDRESS=0x...     # your wallet for receiving USDC payments
+TELEGRAM_BOT_TOKEN=...                 # from @BotFather
+TELEGRAM_BOT_USERNAME=clawcounselBot   # your bot's username (without @)
+WEBHOOK_SECRET=some-secret-string      # any string, used to verify Telegram webhooks
 ```
 
-No database setup. No separate backend. SQLite creates itself on first request.
+## Running Locally
+
+```bash
+# 1. Install dependencies
+cd frontend
+pnpm install
+
+# 2. Start the dev server
+pnpm dev
+# App at http://localhost:3000 — DB auto-creates on first request
+
+# 3. Start a tunnel (needed for Telegram webhooks)
+# In a second terminal:
+cloudflared tunnel --url http://localhost:3000
+# Copy the https://xxx.trycloudflare.com URL from the output
+
+# 4. Register the webhook with Telegram
+# Replace YOUR_BOT_TOKEN and YOUR_TUNNEL_URL:
+curl "https://api.telegram.org/botYOUR_BOT_TOKEN/setWebhook?url=https://YOUR_TUNNEL_URL/api/telegram/webhook&secret_token=YOUR_WEBHOOK_SECRET"
+
+# You must re-run step 4 every time the tunnel URL changes (every restart).
+```
+
+## Useful Commands
+
+| Command | What it does |
+|---------|-------------|
+| `pnpm dev` | Start dev server on :3000 |
+| `pnpm db:wipe` | Delete DB + extracted docs, start fresh |
+| `pnpm db:summary` | Quick overview of all tables |
+| `pnpm db:show` | Interactive SQLite shell |
+
+## Telegram Bot Commands
+
+| Command | What it does |
+|---------|-------------|
+| `/connect {agentId}` | Link this group to an agent (get ID from dashboard) |
+| `/ask {question}` | Ask the agent a legal question |
+| `/remember {info}` | Add a fact to the agent's knowledge base |
+| Drop a PDF | Auto-extracts and stores the document |
