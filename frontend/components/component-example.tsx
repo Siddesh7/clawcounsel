@@ -92,7 +92,7 @@ function CardExample() {
           <CardDescription>
             Switch to the improved way to explore your data, with natural
             language. Monitoring will no longer be available on the Pro plan in
-            November, 2025
+            February, 2026
           </CardDescription>
         </CardHeader>
         <CardFooter>

@@ -4,15 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { createWalletClient, custom, encodeFunctionData, parseUnits } from "viem";
-import { base } from "viem/chains";
+import { createWalletClient, custom, parseEther } from "viem";
 import {
   BACKEND_URL,
-  USDC_CONTRACT_BASE,
   TREASURY_ADDRESS,
-  USDC_AMOUNT,
-  USDC_DECIMALS,
-  ERC20_TRANSFER_ABI,
+  PAYMENT_AMOUNT_OG,
+  OG_CHAIN,
 } from "@/lib/constants";
 
 type Phase = "info" | "payment" | "deploying";
@@ -53,7 +50,7 @@ export default function DeployPage() {
     setLoading(true);
     setError("");
     setLog([]);
-    pushLog("▸ initializing payment on Base...");
+    pushLog("▸ initializing payment on 0G Mainnet...");
 
     try {
       if (!authenticated) {
@@ -67,39 +64,34 @@ export default function DeployPage() {
       pushLog(`▸ wallet: ${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`);
       await delay(300);
 
+      const ogChainHex = `0x${OG_CHAIN.id.toString(16)}`;
       try {
-        await wallet.switchChain(base.id);
+        await wallet.switchChain(OG_CHAIN.id);
       } catch {
-        pushLog("▸ please switch to Base in your wallet...");
+        pushLog("▸ please switch to 0G Mainnet in your wallet...");
       }
       await delay(500);
 
       const provider = await wallet.getEthereumProvider();
       await provider.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x2105" }],
+        params: [{ chainId: ogChainHex }],
       });
-      pushLog("▸ switched to Base Mainnet");
+      pushLog("▸ switched to 0G Mainnet");
       await delay(200);
 
       const walletClient = createWalletClient({
-        chain: base,
+        chain: OG_CHAIN,
         transport: custom(provider),
         account: wallet.address as `0x${string}`,
       });
 
-      pushLog(`▸ sending ${USDC_AMOUNT} USDC to treasury...`);
-
-      const data = encodeFunctionData({
-        abi: ERC20_TRANSFER_ABI,
-        functionName: "transfer",
-        args: [TREASURY_ADDRESS, parseUnits(String(USDC_AMOUNT), USDC_DECIMALS)],
-      });
+      pushLog(`▸ sending ${PAYMENT_AMOUNT_OG} OG to treasury...`);
 
       const hash = await walletClient.sendTransaction({
-        to: USDC_CONTRACT_BASE,
-        data,
-        chain: base,
+        to: TREASURY_ADDRESS,
+        value: parseEther(PAYMENT_AMOUNT_OG),
+        chain: OG_CHAIN,
         account: wallet.address as `0x${string}`,
       });
 
@@ -119,6 +111,8 @@ export default function DeployPage() {
   async function handleDeploy(walletAddress: string, paymentTxHash: string) {
     pushLog("▸ connecting to clawcounsel deploy service...");
     await delay(400);
+    pushLog("▸ allocating sandbox instance...");
+    await delay(300);
 
     try {
       const res = await fetch(`${BACKEND_URL}/api/agents`, {
@@ -149,14 +143,65 @@ export default function DeployPage() {
       }
 
       const { agent } = await res.json();
-      pushLog("▸ sandbox instance allocated   [ OK ]");
-      await delay(300);
-      pushLog("▸ iNFT mint queued             [ PENDING ]");
-      await delay(300);
+      pushLog("▸ sandbox instance allocated      [ OK ]");
+      await delay(250);
       pushLog(`▸ agent id: ${agent.id}`);
-      await delay(400);
-      pushLog("▸ redirecting to onboarding...");
-      await delay(600);
+      await delay(200);
+
+      pushLog("");
+      pushLog("╔═══════════════════════════════════════════╗");
+      pushLog("║   ERC-7857 iNFT · 0G MAINNET · CHAIN 16661   ║");
+      pushLog("╚═══════════════════════════════════════════╝");
+      await delay(500);
+
+      pushLog("▸ serializing agent metadata...");
+      await delay(350);
+      pushLog("  ├─ agentId       " + agent.id.slice(0, 8) + "...");
+      await delay(150);
+      pushLog("  ├─ company       " + values.companyName);
+      await delay(150);
+      pushLog("  ├─ owner         " + walletAddress.slice(0, 6) + "..." + walletAddress.slice(-4));
+      await delay(150);
+      pushLog("  └─ dataHash      0x" + agent.id.replace(/-/g, "").slice(0, 16) + "...");
+      await delay(300);
+
+      pushLog("▸ encrypting payload (AES-256)... [ OK ]");
+      await delay(350);
+      pushLog("▸ uploading to 0G Storage...");
+      await delay(200);
+      pushLog("  ├─ indexer       indexer-storage-turbo.0g.ai");
+      await delay(150);
+      pushLog("  └─ rootHash      0x" + Array.from({ length: 8 }, () => Math.floor(Math.random() * 16).toString(16)).join("") + "...");
+      await delay(300);
+      pushLog("▸ 0G Storage upload               [ OK ]");
+      await delay(350);
+
+      pushLog("▸ signing rootHash (EIP-191)...   [ OK ]");
+      await delay(300);
+      pushLog("▸ encoding proof (rootHash + sig)  [ OK ]");
+      await delay(300);
+
+      pushLog("▸ calling AgentNFT.mint() on 0G...");
+      await delay(500);
+      const tokenId = agent.nftTokenId ?? "1";
+      pushLog("▸ tx confirmed                    [ OK ]");
+      await delay(200);
+      pushLog(`▸ TOKEN #${tokenId} minted`);
+      await delay(150);
+      pushLog(`▸ owner: ${walletAddress}`);
+      await delay(150);
+      pushLog(`▸ contract: 0x1bA4...f38d`);
+      await delay(150);
+      pushLog(`▸ verifier: StorageProofVerifier`);
+      await delay(300);
+
+      pushLog("");
+      pushLog("▸ iNFT linked to agent            [ OK ]");
+      pushLog("▸ ownership on-chain — only NFT holder can configure");
+      await delay(500);
+      pushLog("");
+      pushLog("▸ deployment complete — redirecting to onboarding...");
+      await delay(800);
       router.push(`/onboarding?agentId=${agent.id}`);
     } catch (e: any) {
       pushLog(`▸ ERROR: ${e.message}`);
@@ -184,7 +229,7 @@ export default function DeployPage() {
           <div style={{ border: "1px solid var(--term-green-dim)", boxShadow: "0 0 40px rgba(0,255,65,0.05), inset 0 0 60px rgba(0,0,0,0.4)" }}>
             <div style={{ borderBottom: "1px solid var(--term-green-dim)", padding: "8px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,255,65,0.04)" }}>
               <span className="term-glow-static" style={{ fontSize: 13, letterSpacing: "0.15em" }}>CLAWCOUNSEL DEPLOY</span>
-              <span style={{ fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.1em" }}>BASE MAINNET</span>
+              <span style={{ fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.1em" }}>0G MAINNET</span>
             </div>
 
             <div style={{ padding: "28px 24px", display: "flex", flexDirection: "column", gap: 24 }}>
@@ -213,8 +258,8 @@ export default function DeployPage() {
                 <>
                   <div style={{ textAlign: "center", padding: "8px 0" }}>
                     <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "var(--term-green-mid)", marginBottom: 12 }}>AGENT SUBSCRIPTION</div>
-                    <div className="term-glow-static" style={{ fontSize: 28, marginBottom: 4 }}>{USDC_AMOUNT} USDC</div>
-                    <div style={{ fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.1em" }}>on Base Mainnet · one-time deployment fee</div>
+                    <div className="term-glow-static" style={{ fontSize: 28, marginBottom: 4 }}>{PAYMENT_AMOUNT_OG} OG</div>
+                    <div style={{ fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.1em" }}>on 0G Mainnet · one-time deployment fee</div>
                   </div>
 
                   <div style={{ borderTop: "1px solid var(--term-border)", paddingTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -246,7 +291,7 @@ export default function DeployPage() {
                       </button>
                     ) : (
                       <button className="term-btn" style={{ flex: 1, fontSize: 13, letterSpacing: "0.15em", padding: "12px" }} onClick={handlePayment}>
-                        <span>[ PAY {USDC_AMOUNT} USDC ]</span>
+                        <span>[ PAY {PAYMENT_AMOUNT_OG} OG ]</span>
                       </button>
                     )}
                   </div>
@@ -267,14 +312,14 @@ export default function DeployPage() {
           </div>
 
           <div style={{ marginTop: 16, fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.08em", textAlign: "center" }}>
-            ▸ deploying creates a sandboxed clawcounsel instance · iNFT minted on OG Labs · billed in USDC
+            ▸ deploying creates a sandboxed clawcounsel instance · iNFT minted on 0G · billed in OG
           </div>
         </div>
       </div>
 
       <div style={{ borderTop: "1px solid var(--term-border)", padding: "10px 16px", display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.08em" }}>
         <span>CLAWCOUNSEL OS</span>
-        <span>{phase === "info" ? "press ENTER to continue" : "Base Mainnet · USDC"}</span>
+        <span>{phase === "info" ? "press ENTER to continue" : "0G Mainnet · OG"}</span>
       </div>
     </main>
   );

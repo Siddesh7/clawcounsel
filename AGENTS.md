@@ -14,12 +14,12 @@ clawcounsel/
     app/              ← Pages + API routes
       api/            ← All server-side logic (REST endpoints)
       dashboard/      ← Agent list + detail pages
-      deploy/         ← Agent deployment + USDC payment
+      deploy/         ← Agent deployment + OG payment
       onboarding/     ← Company onboarding flow
     lib/
       db/             ← SQLite + Drizzle ORM (schema + connection)
       services/       ← Business logic (AI agent, identity gen, ingestion)
-      constants.ts    ← Shared constants (USDC, addresses)
+      constants.ts    ← Shared constants (OG chain, addresses)
     components/ui/    ← shadcn components
     data/             ← SQLite database file (gitignored)
   openclaw/
@@ -41,7 +41,7 @@ clawcounsel/
 | Database | SQLite via better-sqlite3 + Drizzle ORM |
 | AI Engine | ClawCounsel Agent (OpenClaw CLI primary) + Anthropic Claude SDK (fallback) |
 | Wallet | Privy (embedded EVM wallets) |
-| Payments | USDC on Base Mainnet via viem |
+| Payments | Native OG token on 0G Mainnet via viem |
 | Communication | Telegram Bot API |
 
 ## Key Patterns
@@ -99,7 +99,7 @@ Create `frontend/.env.local`:
 ```
 ANTHROPIC_API_KEY=sk-ant-...           # Claude API key (identity gen + AI fallback)
 NEXT_PUBLIC_PRIVY_APP_ID=...           # from privy.io dashboard (wallet connection)
-NEXT_PUBLIC_TREASURY_ADDRESS=0x...     # your wallet for receiving USDC payments
+NEXT_PUBLIC_TREASURY_ADDRESS=0x...     # your wallet for receiving OG payments
 TELEGRAM_BOT_TOKEN=...                 # from @BotFather
 TELEGRAM_BOT_USERNAME=clawcounselBot   # your bot's username (without @)
 WEBHOOK_SECRET=some-secret-string      # any string, used to verify Telegram webhooks

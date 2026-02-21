@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { runMonitoringSweep } from "@/lib/services/agent";
+import { db } from "@/lib/db";
+import { agents } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { verifyAgentOwnership } from "@/lib/verify-ownership";
 
 export async function POST(
@@ -7,13 +9,18 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-
   const check = await verifyAgentOwnership(req, id);
   if (!check.authorized) return check.response;
 
-  runMonitoringSweep(id).catch((e) =>
-    console.error("[monitor] sweep failed:", e),
-  );
+  const [updated] = await db
+    .update(agents)
+    .set({
+      telegramChatId: null,
+      telegramChatTitle: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(agents.id, id))
+    .returning();
 
-  return NextResponse.json({ status: "sweep_started", agentId: id });
+  return NextResponse.json({ agent: updated });
 }

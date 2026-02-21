@@ -1,12 +1,12 @@
 ---
 name: Enhance ClawCounsel Hackathon
-overview: "Option A: Single OpenClaw gateway with multi-agent routing. Each company gets an isolated agent session/workspace. Add real USDC payment via Privy on Base, redesign onboarding, document upload to OpenClaw workspace. Tokenize deployed agents as 0G INFTs (ERC-7857) on 0G Mainnet for ownership, transfer, and marketplace. Terminal UI stays as-is."
+overview: "Option A: Single OpenClaw gateway with multi-agent routing. Each company gets an isolated agent session/workspace. Add real OG payment via Privy on 0G Mainnet, redesign onboarding, document upload to OpenClaw workspace. Tokenize deployed agents as 0G INFTs (ERC-7857) on 0G Mainnet for ownership, transfer, and marketplace. Terminal UI stays as-is."
 todos:
   - id: phase1-openclaw
     content: "Phase 1: Set up OpenClaw as agent runtime (install, configure workspace, write AGENTS.md + legal skills, replace raw Claude SDK calls with OpenClaw CLI)"
     status: completed
   - id: phase2-payment
-    content: "Phase 2: Add Base Mainnet USDC payment to deploy page (Privy for wallet, ERC-20 transfer via viem, schema update)"
+    content: "Phase 2: Add 0G Mainnet OG payment to deploy page (Privy for wallet, native transfer via viem, schema update)"
     status: completed
   - id: phase3-onboarding
     content: "Phase 3: Redesign onboarding questions (new fields, schema migration, update backend handler)"
@@ -33,7 +33,7 @@ The biggest change is replacing raw `anthropic.messages.create()` calls with Ope
 flowchart TB
     subgraph frontend [Frontend - Next.js]
         Landing[Landing Page]
-        Deploy[Deploy + USDC Payment]
+        Deploy[Deploy + OG Payment]
         Onboard[Onboarding + Doc Upload]
         Dash[Dashboard + Alerts]
     end
@@ -57,7 +57,7 @@ flowchart TB
         TG[Telegram Bot API]
         DB[(Neon Postgres)]
         Privy[Privy Wallet]
-        Base[Base Mainnet USDC]
+        OGChain[0G Mainnet]
         ZeroG[0G Mainnet]
         ZeroGStorage[0G Storage]
     end
@@ -72,7 +72,7 @@ flowchart TB
     Agent --> Skills
     Cron -->|"monitoring sweep"| Agent
     Deploy --> Privy
-    Privy --> Base
+    Privy --> OGChain
     backend --> DB
     Deploy -->|"mint INFT (ERC-7857)"| ZeroG
     backend -->|"encrypted agent metadata"| ZeroGStorage
@@ -169,11 +169,11 @@ Replace `runMonitoringSweep()`:
 
 ---
 
-## Phase 2: USDC Payment on Deploy
+## Phase 2: OG Payment on Deploy
 
-Add real on-chain USDC payment to [frontend/app/deploy/page.tsx](frontend/app/deploy/page.tsx).
+Add real on-chain OG payment to [frontend/app/deploy/page.tsx](frontend/app/deploy/page.tsx).
 
-**Chain: Base Mainnet** / **Wallet: Privy**
+**Chain: 0G Mainnet** / **Wallet: Privy**
 
 **New dependencies (frontend):**
 
@@ -183,15 +183,14 @@ Add real on-chain USDC payment to [frontend/app/deploy/page.tsx](frontend/app/de
 **Setup:**
 
 - Create Privy app at dashboard.privy.io, get App ID
-- Configure Base Mainnet in Privy dashboard
+- Configure 0G Mainnet in Privy dashboard
 - Wrap app in `<PrivyProvider>` in layout or providers file
 - Env vars: `NEXT_PUBLIC_PRIVY_APP_ID`, `NEXT_PUBLIC_TREASURY_ADDRESS`
-- USDC on Base: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
 
 **Deploy page rework (3 steps):**
 
 1. Company info (existing: name, ID)
-2. **Payment step (NEW):** Privy `login()` -> show "50 USDC" -> "Pay" button -> ERC-20 `transfer()` on Base -> confirm tx -> store tx hash + wallet address
+2. **Payment step (NEW):** Privy `login()` -> show "1 OG" -> "Pay" button -> native transfer on 0G -> confirm tx -> store tx hash + wallet address
 3. Deploy animation (existing) -> redirect to onboarding
 
 **Backend:** Accept `paymentTxHash` + `walletAddress` in `POST /api/agents`, store on agent row.
@@ -289,7 +288,7 @@ Tokenize each deployed ClawCounsel agent as an **INFT (Intelligent NFT)** per [E
 
 **Flow:**
 
-1. **After deploy + USDC payment** — backend (or frontend with user wallet) mints an INFT for the new agent.
+1. **After deploy + OG payment** — backend (or frontend with user wallet) mints an INFT for the new agent.
 2. **Agent metadata** — serialize agent identity (agentId, company name, workspace path or 0G Storage pointer, monitoring config) into a payload, encrypt, commit hash to chain, store encrypted blob on 0G Storage.
 3. **INFT contract (ERC-7857)** — deploy or use existing INFT contract on 0G Mainnet; mint assigns token to payer/company wallet; metadata URI or commitment points to 0G Storage.
 4. **Dashboard** — show INFT token ID and "Transfer agent" (transfer INFT to another address); optional link to block explorer.

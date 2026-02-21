@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { agents, onboardingData } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { generateAgentIdentity } from "@/lib/services/identity";
+import { verifyAgentOwnership } from "@/lib/verify-ownership";
 import { resolve } from "path";
 import { writeFile, mkdir } from "fs/promises";
 
@@ -82,6 +83,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
+
+  const check = await verifyAgentOwnership(req, id);
+  if (!check.authorized) return check.response;
+
   const body = await req.json();
 
   const [existing] = await db
