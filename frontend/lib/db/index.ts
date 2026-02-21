@@ -79,6 +79,16 @@ sqlite.exec(`
     created_at INTEGER NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS kite_transactions (
+    id TEXT PRIMARY KEY,
+    agent_id TEXT NOT NULL REFERENCES agents(id),
+    tx_hash TEXT NOT NULL,
+    direction TEXT NOT NULL DEFAULT 'outbound',
+    amount TEXT NOT NULL DEFAULT '0',
+    chain_id INTEGER NOT NULL DEFAULT 2368,
+    created_at INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS alerts (
     id TEXT PRIMARY KEY,
     agent_id TEXT NOT NULL REFERENCES agents(id),
@@ -91,5 +101,9 @@ sqlite.exec(`
     created_at INTEGER NOT NULL
   );
 `);
+
+// Additive migrations for new columns (safe to run repeatedly)
+try { sqlite.exec(`ALTER TABLE agents ADD COLUMN kite_wallet_address TEXT`); } catch { /* already exists */ }
+try { sqlite.exec(`ALTER TABLE agents ADD COLUMN kite_query_count INTEGER DEFAULT 0`); } catch { /* already exists */ }
 
 export const db = drizzle(sqlite, { schema });

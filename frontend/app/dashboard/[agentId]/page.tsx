@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { BACKEND_URL } from "@/lib/constants";
 import { INFTCard } from "./inft-card";
+import { KiteCard } from "./kite-card";
 
 type Alert = {
   id: string;
@@ -170,6 +171,8 @@ export default function AgentDetailPage() {
               onUpdate={fetchInft}
             />
 
+            <KiteCard agentId={agentId!} />
+
             <div className="term-box-glow" style={{ padding: "16px 20px" }}>
               <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "var(--term-green-mid)", marginBottom: 4 }}>COMPANY CONTEXT</div>
               {onboarding ? (
@@ -240,7 +243,7 @@ export default function AgentDetailPage() {
 
       <div style={{ borderTop: "1px solid var(--term-border)", padding: "10px 16px", display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.08em" }}>
         <span>CLAWCOUNSEL OS</span>
-        <span>CLAWCOUNSEL · BASE · CLAUDE</span>
+        <span>CLAWCOUNSEL · BASE · 0G · KITE AI · x402</span>
       </div>
     </main>
   );

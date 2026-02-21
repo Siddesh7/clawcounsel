@@ -1,9 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { spawn } from "child_process";
 import { db } from "@/lib/db";
-import { conversations, onboardingData, alerts, agents } from "@/lib/db/schema";
+import { conversations, onboardingData, alerts, agents, kiteTransactions } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { retrieveContext, retrieveDocumentContext, listDocuments } from "./ingestion";
+import { getAgentKiteAddress, recordQueryOnChain } from "./kite";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -138,11 +139,39 @@ export async function askAgent(
       { agentId, chatId, userId, role: "user", content: question },
       { agentId, chatId, userId, role: "assistant", content: openclawResponse },
     ]);
+    recordKiteActivity(agentId, agent).catch(() => {});
     return openclawResponse;
   }
 
   console.log("[agent] openclaw unavailable, using Anthropic SDK fallback");
-  return askAgentFallback(agentId, userId, chatId, question, docContext);
+  const fallbackResponse = await askAgentFallback(agentId, userId, chatId, question, docContext);
+  recordKiteActivity(agentId, agent).catch(() => {});
+  return fallbackResponse;
+}
+
+async function recordKiteActivity(
+  agentId: string,
+  agent: { kiteWalletAddress: string | null; kiteQueryCount: number | null },
+): Promise<void> {
+  const kiteAddress = agent.kiteWalletAddress ?? getAgentKiteAddress(agentId);
+  const newCount = (agent.kiteQueryCount ?? 0) + 1;
+
+  await db.update(agents).set({
+    kiteWalletAddress: kiteAddress,
+    kiteQueryCount: newCount,
+  }).where(eq(agents.id, agentId));
+
+  const txHash = await recordQueryOnChain(kiteAddress);
+  if (txHash) {
+    await db.insert(kiteTransactions).values({
+      agentId,
+      txHash,
+      direction: "outbound",
+      amount: "0.0001",
+      chainId: 2368,
+    });
+    console.log(`[kite] agent ${agentId} query #${newCount} recorded: ${txHash}`);
+  }
 }
 
 async function askAgentFallback(

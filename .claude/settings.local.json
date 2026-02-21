@@ -13,7 +13,16 @@
       "Bash(curl -s \"https://106c-2401-4900-1cb9-dec4-64ed-42da-3c48-b93e.ngrok-free.app/api/telegram/set-webhook?secret=sjjahjkd8u98fd8fud8fdhfd98fuufd\")",
       "Bash(curl:*)",
       "Bash(python3 -m json.tool:*)",
-      "Bash(psql \"postgresql://neondb_owner:npg_sHwUKz3y4YjG@ep-aged-grass-a1tbdcnv-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require\" -c \":*)"
+      "Bash(psql \"postgresql://neondb_owner:npg_sHwUKz3y4YjG@ep-aged-grass-a1tbdcnv-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require\" -c \":*)",
+      "WebFetch(domain:docs.gokite.ai)",
+      "WebFetch(domain:kite.foundation)",
+      "WebSearch",
+      "WebFetch(domain:docs.cdp.coinbase.com)",
+      "WebFetch(domain:www.x402.org)",
+      "Bash(head:*)",
+      "Bash(grep:*)",
+      "Bash(lsof:*)",
+      "Bash(node:*)"
     ]
   }
 }
