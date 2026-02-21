@@ -15,6 +15,7 @@ type Agent = {
   status: string;
   telegramChatId: string | null;
   paymentTxHash: string | null;
+  nftTokenId: string | null;
   createdAt: string;
   onboarding: {
     industry?: string;
@@ -80,10 +81,11 @@ export default function DashboardPage() {
           </div>
         ) : (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 120px 100px 40px", gap: 12, padding: "8px 16px", borderBottom: "1px solid var(--term-green-dim)", fontSize: 10, letterSpacing: "0.2em", color: "var(--term-green-mid)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 120px 80px 100px 40px", gap: 12, padding: "8px 16px", borderBottom: "1px solid var(--term-green-dim)", fontSize: 10, letterSpacing: "0.2em", color: "var(--term-green-mid)" }}>
               <span>COMPANY</span>
               <span>INDUSTRY</span>
               <span>FOCUS</span>
+              <span>INFT</span>
               <span>STATUS</span>
               <span />
             </div>
@@ -92,7 +94,7 @@ export default function DashboardPage() {
               <Link key={agent.id} href={`/dashboard/${agent.id}`} style={{ textDecoration: "none" }}>
                 <div
                   className="term-box"
-                  style={{ display: "grid", gridTemplateColumns: "1fr 160px 120px 100px 40px", gap: 12, padding: "14px 16px", cursor: "pointer", transition: "background 0.1s, border-color 0.1s", borderColor: "var(--term-border)" }}
+                  style={{ display: "grid", gridTemplateColumns: "1fr 160px 120px 80px 100px 40px", gap: 12, padding: "14px 16px", cursor: "pointer", transition: "background 0.1s, border-color 0.1s", borderColor: "var(--term-border)" }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(0,255,65,0.04)"; (e.currentTarget as HTMLDivElement).style.borderColor = "var(--term-green-dim)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--term-surface)"; (e.currentTarget as HTMLDivElement).style.borderColor = "var(--term-border)"; }}
                 >
@@ -111,6 +113,9 @@ export default function DashboardPage() {
                   </div>
                   <div style={{ fontSize: 11, color: "var(--term-green-mid)", alignSelf: "center", textTransform: "uppercase", letterSpacing: "0.1em" }}>
                     {agent.onboarding?.monitoringPriorities?.split(",")[0]?.trim() ?? "—"}
+                  </div>
+                  <div style={{ fontSize: 11, alignSelf: "center", color: agent.nftTokenId ? "#00ff41" : "var(--term-green-dim)" }}>
+                    {agent.nftTokenId ? "●" : "—"}
                   </div>
                   <div style={{ fontSize: 11, alignSelf: "center", letterSpacing: "0.1em", color: STATUS_COLOR[agent.status] ?? "var(--term-green-mid)" }}>
                     {agent.status.toUpperCase()}

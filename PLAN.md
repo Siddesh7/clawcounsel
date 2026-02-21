@@ -1,6 +1,6 @@
 ---
 name: Enhance ClawCounsel Hackathon
-overview: "Option A: Single OpenClaw gateway with multi-agent routing. Each company gets an isolated agent session/workspace. Add real USDC payment via Privy on Base, redesign onboarding, document upload to OpenClaw workspace. Terminal UI stays as-is."
+overview: "Option A: Single OpenClaw gateway with multi-agent routing. Each company gets an isolated agent session/workspace. Add real USDC payment via Privy on Base, redesign onboarding, document upload to OpenClaw workspace. Tokenize deployed agents as 0G INFTs (ERC-7857) on 0G Mainnet for ownership, transfer, and marketplace. Terminal UI stays as-is."
 todos:
   - id: phase1-openclaw
     content: "Phase 1: Set up OpenClaw as agent runtime (install, configure workspace, write AGENTS.md + legal skills, replace raw Claude SDK calls with OpenClaw CLI)"
@@ -17,6 +17,9 @@ todos:
   - id: phase5-monitoring
     content: "Phase 5: Wire up monitoring & alerts (OpenClaw cron, alert endpoint, Telegram delivery, dashboard display)"
     status: completed
+  - id: phase6-inft
+    content: "Phase 6: 0G INFT integration on Mainnet (mint ERC-7857 after deploy, 0G Storage for agent metadata, dashboard INFT/transfer)"
+    status: pending
 isProject: false
 ---
 
@@ -55,6 +58,8 @@ flowchart TB
         DB[(Neon Postgres)]
         Privy[Privy Wallet]
         Base[Base Mainnet USDC]
+        ZeroG[0G Mainnet]
+        ZeroGStorage[0G Storage]
     end
 
     frontend --> backend
@@ -69,6 +74,9 @@ flowchart TB
     Deploy --> Privy
     Privy --> Base
     backend --> DB
+    Deploy -->|"mint INFT (ERC-7857)"| ZeroG
+    backend -->|"encrypted agent metadata"| ZeroGStorage
+    ZeroG --> ZeroGStorage
 ```
 
 **What OpenClaw replaces:**
@@ -262,6 +270,52 @@ Configure a cron job in OpenClaw that periodically asks the agent to scan docume
 
 ---
 
+## Phase 6: 0G INFT Integration (Mainnet / Production)
+
+Tokenize each deployed ClawCounsel agent as an **INFT (Intelligent NFT)** per [ERC-7857](https://docs.0g.ai/developer-hub/building-on-0g/inft/inft-overview) on **0G Mainnet**, so companies can own, transfer, and (optionally) monetize their AI agent. Production deployment uses 0G Mainnet only — no testnet in prod.
+
+**Why INFT (vs plain NFT):**
+
+- **Secure metadata transfer** — ownership and encrypted agent "intelligence" (config, workspace refs, skills) transfer together.
+- **Privacy-preserving** — agent metadata encrypted; only owner can decrypt via key delivery.
+- **0G Storage** — encrypted agent metadata stored on 0G Storage; INFT contract on 0G Chain references it.
+
+**0G Mainnet (production):**
+
+- **Chain ID:** `16661` (0G Mainnet / Aristotle)
+- **RPC (prod):** `https://evmrpc.0g.ai` or use Ankr/QuickNode/ThirdWeb for redundancy
+- **Block explorer:** `https://chainscan.0g.ai`
+- **Storage indexer:** `https://indexer-storage-turbo.0g.ai`
+
+**Flow:**
+
+1. **After deploy + USDC payment** — backend (or frontend with user wallet) mints an INFT for the new agent.
+2. **Agent metadata** — serialize agent identity (agentId, company name, workspace path or 0G Storage pointer, monitoring config) into a payload, encrypt, commit hash to chain, store encrypted blob on 0G Storage.
+3. **INFT contract (ERC-7857)** — deploy or use existing INFT contract on 0G Mainnet; mint assigns token to payer/company wallet; metadata URI or commitment points to 0G Storage.
+4. **Dashboard** — show INFT token ID and "Transfer agent" (transfer INFT to another address); optional link to block explorer.
+
+**Backend:**
+
+- `POST /api/agents/:agentId/mint-inft` — (optional) server-assisted mint using app wallet, or return calldata for client-side mint with Privy.
+- Store `inftTokenId` and `inftContractAddress` (and optionally `inftChainId = 16661`) on `agents` table.
+- Use 0G Storage SDK/API to upload encrypted agent metadata; use 0G Chain (viem) for mint tx.
+
+**Frontend:**
+
+- Deploy success step: "Agent deployed. INFT minted on 0G Mainnet." with link to `chainscan.0g.ai` for the token.
+- Dashboard agent card: show INFT badge, "View on Explorer", "Transfer" (transfer INFT to new owner).
+
+**Schema:** Add to `agents`: `inftTokenId` (text), `inftContractAddress` (text), `inftChainId` (number, default 16661).
+
+**Env (prod):** `NEXT_PUBLIC_0G_INFT_CONTRACT_ADDRESS`, `0G_STORAGE_*` / RPC keys as per 0G docs; use mainnet-only in production.
+
+**References:**
+
+- [INFTs Overview](https://docs.0g.ai/developer-hub/building-on-0g/inft/inft-overview) — concepts, ERC-7857, transfer flow
+- [0G Mainnet](https://docs.0g.ai/developer-hub/mainnet/mainnet-overview) — chain ID, RPC, production deployment
+
+---
+
 ## Onboarding Flow (3 steps)
 
 ```
@@ -279,20 +333,21 @@ Step 3: Connect Telegram (existing flow, works as-is)
 **Frontend:**
 
 - `frontend/app/layout.tsx` -- PrivyProvider wrapper
-- `frontend/app/deploy/page.tsx` -- add payment step with Privy
+- `frontend/app/deploy/page.tsx` -- add payment step with Privy; post-deploy INFT mint confirmation + explorer link
 - `frontend/app/onboarding/page.tsx` -- new questions + document upload step
-- `frontend/app/dashboard/[agentId]/page.tsx` -- show real alerts
-- `frontend/app/dashboard/page.tsx` -- show alert counts
+- `frontend/app/dashboard/[agentId]/page.tsx` -- show real alerts; INFT badge, "View on Explorer", "Transfer agent"
+- `frontend/app/dashboard/page.tsx` -- show alert counts; INFT indicator on agent cards
 - `frontend/package.json` -- add `@privy-io/react-auth`, `viem`
 
 **Backend:**
 
 - `backend/src/services/agent.ts` -- replace Claude SDK with OpenClaw CLI calls
-- `backend/src/routes/agents.ts` -- new alert/monitor endpoints, updated onboarding, payment field
+- `backend/src/routes/agents.ts` -- new alert/monitor endpoints, updated onboarding, payment field; `POST .../mint-inft`
 - `backend/src/routes/documents.ts` -- real file upload, save to OpenClaw workspace
-- `backend/src/db/schema.ts` -- new onboarding fields + payment tx field
+- `backend/src/db/schema.ts` -- new onboarding fields + payment tx field; `inftTokenId`, `inftContractAddress`, `inftChainId`
 - `backend/index.ts` -- monitoring scheduler
 - `backend/package.json` -- add `pdf-parse`
+- `backend/src/services/inft.ts` (new) -- 0G Mainnet INFT mint + 0G Storage metadata upload (ERC-7857)
 
 **OpenClaw (new files):**
 
@@ -303,3 +358,9 @@ Step 3: Connect Telegram (existing flow, works as-is)
 - `~/.openclaw/workspace/skills/copyright-watch/SKILL.md` -- IP infringement detection skill
 - `~/.openclaw/workspace/documents/` -- uploaded company documents live here
 - `~/.openclaw/workspace/COMPANY_CONTEXT.md` -- onboarding answers for agent reference
+
+**0G Mainnet (Phase 6 — production):**
+
+- INFT contract (ERC-7857) on 0G Mainnet (chain ID 16661)
+- Encrypted agent metadata on 0G Storage; contract or metadata URI references it
+- Env: `NEXT_PUBLIC_0G_INFT_CONTRACT_ADDRESS`, 0G RPC/Storage keys (mainnet only in prod)

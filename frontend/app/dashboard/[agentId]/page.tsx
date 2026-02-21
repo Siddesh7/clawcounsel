@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { BACKEND_URL } from "@/lib/constants";
+import { INFTCard } from "./inft-card";
 
 type Alert = {
   id: string;
@@ -45,8 +46,19 @@ export default function AgentDetailPage() {
   const [agent, setAgent] = useState<any>(null);
   const [onboarding, setOnboarding] = useState<any>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [inft, setInft] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sweeping, setSweeping] = useState(false);
+
+  console.log("inft",inft);
+
+  const fetchInft = useCallback(() => {
+    if (!agentId) return;
+    fetch(`${BACKEND_URL}/api/agents/${agentId}/inft`)
+      .then((r) => r.json())
+      .then(setInft)
+      .catch(() => setInft(null));
+  }, [agentId]);
 
   useEffect(() => {
     if (!agentId) return;
@@ -59,7 +71,8 @@ export default function AgentDetailPage() {
       setOnboarding(o.onboarding);
       setAlerts(al.alerts ?? []);
     }).finally(() => setLoading(false));
-  }, [agentId]);
+    fetchInft();
+  }, [agentId, fetchInft]);
 
   async function triggerSweep() {
     setSweeping(true);
@@ -149,6 +162,13 @@ export default function AgentDetailPage() {
                 </div>
               )}
             </div>
+
+            <INFTCard
+              agentId={agentId!}
+              agentWallet={agent?.walletAddress ?? null}
+              inft={inft}
+              onUpdate={fetchInft}
+            />
 
             <div className="term-box-glow" style={{ padding: "16px 20px" }}>
               <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "var(--term-green-mid)", marginBottom: 4 }}>COMPANY CONTEXT</div>
