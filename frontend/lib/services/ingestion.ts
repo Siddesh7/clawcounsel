@@ -48,6 +48,20 @@ export async function ingestTelegramMessage({
   });
 }
 
+export async function addMemory(
+  agentId: string,
+  username: string,
+  content: string,
+) {
+  await db.insert(knowledgeItems).values({
+    agentId,
+    source: "team_memory",
+    username,
+    content,
+    metadata: { addedVia: "telegram_remember" },
+  });
+}
+
 export async function retrieveDocumentContext(
   agentId: string,
   query: string,

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { agents } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { ingestTelegramMessage } from "@/lib/services/ingestion";
+import { ingestTelegramMessage, addMemory } from "@/lib/services/ingestion";
 import { askAgent } from "@/lib/services/agent";
 import { extractAndStore } from "@/lib/services/pdf";
 
@@ -194,6 +194,23 @@ export async function POST(req: NextRequest) {
     text,
     threadId,
   });
+
+  if (text.startsWith("/remember")) {
+    const info = text.replace(/^\/remember\s*/i, "").trim();
+    if (!info) {
+      await send(
+        chatId,
+        "Usage: /remember Our NDA with Acme Corp expires Dec 2026",
+        message.message_id,
+      );
+      return NextResponse.json({ ok: true });
+    }
+
+    await addMemory(agent.id, username, info);
+    const codename = agent.agentCodename ?? "Agent";
+    await send(chatId, `*${codename}* noted that. I'll reference it in future answers.`, message.message_id);
+    return NextResponse.json({ ok: true });
+  }
 
   const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? "";
   const isMention = text.includes(`@${botUsername}`);
