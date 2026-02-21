@@ -129,7 +129,7 @@ export async function askAgent(
     fullMessage += `\n[Relevant Document Excerpts]\n${docContext}\n`;
   }
   fullMessage += `\n[Question from @${userId}]\n${question}`;
-  fullMessage += `\n\nIMPORTANT: Answer specifically about THIS company using the document excerpts above. Cite document names and specific sections. Do NOT give generic advice.`;
+  fullMessage += `\n\nRULES: Max 8 lines. Cite specific doc names + sections. No generic advice. One follow-up question.`;
 
   const openclawResponse = await runOpenClaw(fullMessage, agentId);
 
@@ -193,20 +193,16 @@ ${onboarding ? `- Industry: ${onboarding.industry ?? "not specified"}
 - Monitoring: ${onboarding.monitoringPriorities ?? "general"}` : "(No onboarding data)"}
 
 RESPONSE RULES:
-1. You ONLY answer about ${companyName}. Every answer must reference their specific documents, clauses, dates, or parties.
-2. If the question relates to their uploaded documents, cite the document name and specific section/clause (e.g. "Per your _Developer Grant Agreement_ Section 4.2...").
-3. If you don't have data to answer, say so clearly and suggest what document or info they should provide.
-4. Be concise: 10-15 lines max. Get to the point.
-5. Flag risks with severity: LOW / MEDIUM / HIGH / CRITICAL
-6. End with ONE focused follow-up question.
-7. Never give generic legal advice. Never say "typically" or "in general" — always ground it in their data.
+1. MAX 8 LINES. This is a hard limit. No exceptions. No preamble, no filler.
+2. Answer ONLY from ${companyName}'s documents. Cite the doc name + section.
+3. If you don't have the data, say "I don't have that document" in one line.
+4. No generic advice. No "typically", "generally", "in most cases". Only cite what's in their docs.
+5. One follow-up question at the end, max one line.
 
-TELEGRAM FORMATTING (STRICT):
-- NEVER use # headers, markdown tables (|---|), or horizontal rules (---)
-- Use *bold* for emphasis (single asterisks)
-- Use _italic_ for secondary emphasis
-- Use line breaks and bullet points for structure
-- Use CAPS for section labels (e.g. RISK LEVEL: HIGH)`;
+TELEGRAM FORMATTING:
+- No # headers, no tables, no ---
+- *bold* for key terms, _italic_ for doc names
+- Short bullet points, not paragraphs`;
 
   let dataBlock = "";
 
@@ -222,7 +218,7 @@ TELEGRAM FORMATTING (STRICT):
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 1024,
+    max_tokens: 512,
     system: systemPrompt + dataBlock,
     messages: [...recentMessages, { role: "user", content: question }],
   });
