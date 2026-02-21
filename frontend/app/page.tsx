@@ -138,7 +138,7 @@ export default function Page() {
               letterSpacing: "0.1em",
             }}
           >
-            subscribe with USDC · own your agent via iNFT · telegram integration included
+            pay with OG · own your agent via iNFT · telegram integration included
           </div>
         </div>
       </div>
@@ -157,7 +157,7 @@ export default function Page() {
         }}
       >
         <span>© 2025 CLAWCOUNSEL · ALL RIGHTS RESERVED</span>
-        <span>OG LABS iNFT · BASE · CLAUDE</span>
+        <span>OG LABS iNFT · 0G · CLAUDE</span>
       </div>
     </main>
   );

@@ -1,12 +1,10 @@
 # ClawCounsel
 
-AI legal counsel agents for companies. Subscribe with USDC, deploy a personalized agent, upload contracts, get legal Q&A and risk monitoring via Telegram. Each agent is minted as an ERC-7857 iNFT on 0G — the company owns it on-chain.
-
-**Stack:** Next.js 16 · SQLite · Claude · OpenClaw · Privy · Base Mainnet · Telegram · 0G iNFT (ERC-7857)
+AI legal counsel agents for companies. Pay with OG on 0G Mainnet, deploy a personalized agent, upload contracts, get legal Q&A and risk monitoring via Telegram. Each agent is minted as an ERC-7857 iNFT on 0G — the company owns it on-chain.
 
 ## How It Works
 
-1. Company pays USDC on Base → agent is deployed
+1. Company pays 1 OG on 0G Mainnet → agent is deployed
 2. Agent gets an auto-generated identity (codename, specialty, tone)
 3. Company uploads legal docs — text extracted via `unpdf` or Claude vision for scanned PDFs
 4. Agent minted as an ERC-7857 iNFT on 0G mainnet — company owns it on-chain with verifiable data
@@ -14,21 +12,21 @@ AI legal counsel agents for companies. Subscribe with USDC, deploy a personalize
 
 ## Telegram Commands
 
-| Command | Description |
-|---------|-------------|
-| `/connect {agentId}` | Link group to an agent |
-| `/ask {question}` | Ask a legal question grounded in your docs |
-| `/remember {info}` | Add a fact to the knowledge base |
-| Drop a PDF | Auto-extracts and stores the document |
+| Command              | Description                                |
+| -------------------- | ------------------------------------------ |
+| `/connect {agentId}` | Link group to an agent                     |
+| `/ask {question}`    | Ask a legal question grounded in your docs |
+| `/remember {info}`   | Add a fact to the knowledge base           |
+| Drop a PDF           | Auto-extracts and stores the document      |
 
 ## On-Chain (0G Mainnet)
 
 Agents are tokenized as **ERC-7857 iNFTs** on the 0G chain. Each iNFT stores hashes of the agent's data (uploaded documents, knowledge base) and uses a storage proof verifier to ensure data integrity.
 
-| Contract | Address |
-|----------|---------|
+| Contract                     | Address                                                                                                                    |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | **AgentNFT** (ERC-7857 iNFT) | [`0x1bA49054efb6C2104fCE0a87B24239d158b4f38d`](https://chainscan.0g.ai/address/0x1bA49054efb6C2104fCE0a87B24239d158b4f38d) |
-| **StorageProofVerifier** | [`0x71011E1EF4163Bf069D542daf6D13C1A2b92C941`](https://chainscan.0g.ai/address/0x71011E1EF4163Bf069D542daf6D13C1A2b92C941) |
+| **StorageProofVerifier**     | [`0x71011E1EF4163Bf069D542daf6D13C1A2b92C941`](https://chainscan.0g.ai/address/0x71011E1EF4163Bf069D542daf6D13C1A2b92C941) |
 
 - **RPC:** `https://evmrpc.0g.ai`
 - **Explorer:** [chainscan.0g.ai](https://chainscan.0g.ai)
@@ -43,8 +41,8 @@ Agents are tokenized as **ERC-7857 iNFTs** on the 0G chain. Each iNFT stores has
 
 ## Payments
 
-- **Network:** Base Mainnet
-- **Token:** USDC (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`)
+- **Network:** 0G Mainnet (chain ID 16661)
+- **Token:** OG (native token, 1 OG per agent deployment)
 - **Wallet connection:** Privy (embedded EVM wallets)
 
 ## Setup

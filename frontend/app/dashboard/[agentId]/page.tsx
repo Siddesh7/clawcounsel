@@ -316,7 +316,7 @@ export default function AgentDetailPage() {
 
       <div style={{ borderTop: "1px solid var(--term-border)", padding: "10px 16px", display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.08em" }}>
         <span>CLAWCOUNSEL OS</span>
-        <span>CLAWCOUNSEL · BASE · CLAUDE</span>
+        <span>CLAWCOUNSEL · 0G · CLAUDE</span>
       </div>
     </main>
   );
