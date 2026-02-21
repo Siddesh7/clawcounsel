@@ -69,7 +69,24 @@ export async function retrieveDocumentContext(
 
   for (const doc of docs) {
     if (!doc.content) continue;
-    const paragraphs = doc.content.split(/\n{2,}/);
+
+    let paragraphs = doc.content.split(/\n{2,}/);
+
+    if (paragraphs.length < 3) {
+      paragraphs = doc.content.split(/\n/);
+    }
+
+    if (paragraphs.length < 3) {
+      const CHUNK_SIZE = 800;
+      paragraphs = [];
+      for (let i = 0; i < doc.content.length; i += CHUNK_SIZE) {
+        const end = Math.min(i + CHUNK_SIZE, doc.content.length);
+        let breakAt = doc.content.lastIndexOf(". ", end);
+        if (breakAt <= i) breakAt = end;
+        paragraphs.push(doc.content.slice(i, breakAt + 1));
+        i = breakAt;
+      }
+    }
 
     for (const para of paragraphs) {
       const trimmed = para.trim();

@@ -4,6 +4,7 @@ import { agents } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { ingestTelegramMessage } from "@/lib/services/ingestion";
 import { askAgent } from "@/lib/services/agent";
+import { extractAndStore } from "@/lib/services/pdf";
 
 const BOT_TOKEN = () => process.env.TELEGRAM_BOT_TOKEN!;
 const TG = (method: string) =>
@@ -38,10 +39,76 @@ async function send(
   }
 }
 
+async function downloadTelegramFile(fileId: string): Promise<Buffer | null> {
+  const res = await fetch(TG("getFile"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ file_id: fileId }),
+  });
+  const data = await res.json();
+  if (!data.ok || !data.result?.file_path) return null;
+
+  const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN()}/${data.result.file_path}`;
+  const fileRes = await fetch(fileUrl);
+  if (!fileRes.ok) return null;
+
+  return Buffer.from(await fileRes.arrayBuffer());
+}
+
+async function handleDocument(
+  agentId: string,
+  message: Record<string, any>,
+  chatId: number,
+) {
+  const doc = message.document;
+  if (!doc?.file_id) return;
+
+  const filename: string = doc.file_name ?? "document";
+  const supported = /\.(pdf|txt|md|doc|docx)$/i.test(filename);
+  if (!supported) return;
+
+  const codename =
+    (
+      await db.select().from(agents).where(eq(agents.id, agentId)).limit(1)
+    )[0]?.agentCodename ?? "Agent";
+
+  await send(chatId, `_${codename} processing ${filename}..._`, message.message_id);
+
+  try {
+    const buffer = await downloadTelegramFile(doc.file_id);
+    if (!buffer) {
+      await send(chatId, `Could not download _${filename}_.`, message.message_id);
+      return;
+    }
+
+    const result = await extractAndStore(agentId, buffer, filename, "telegram");
+    if (result) {
+      await send(
+        chatId,
+        `*${filename}* ingested — ${result.chunks} sections extracted via ${result.method}.\n\nYou can now /ask questions about this document.`,
+        message.message_id,
+      );
+    } else {
+      await send(
+        chatId,
+        `Could not extract text from _${filename}_. Try uploading a text-based PDF.`,
+        message.message_id,
+      );
+    }
+  } catch (e) {
+    console.error("[telegram] document processing error:", e);
+    await send(chatId, `Error processing _${filename}_.`, message.message_id);
+  }
+}
+
 export async function POST(req: NextRequest) {
   const update = await req.json();
   const message = update?.message;
-  if (!message?.text) return NextResponse.json({ ok: true });
+  if (!message) return NextResponse.json({ ok: true });
+
+  const hasText = !!message.text;
+  const hasDocument = !!message.document;
+  if (!hasText && !hasDocument) return NextResponse.json({ ok: true });
 
   const chatId = message.chat.id;
   const chatTitle =
@@ -49,13 +116,13 @@ export async function POST(req: NextRequest) {
   const userId = String(message.from?.id ?? "unknown");
   const username =
     message.from?.username ?? message.from?.first_name ?? userId;
-  const text = message.text as string;
+  const text = (message.text ?? message.caption ?? "") as string;
   const messageId = String(message.message_id);
   const threadId = message.message_thread_id
     ? String(message.message_thread_id)
     : undefined;
 
-  if (text.startsWith("/connect")) {
+  if (hasText && text.startsWith("/connect")) {
     const agentId = text.split(" ")[1]?.trim();
     if (!agentId) {
       await send(
@@ -111,6 +178,11 @@ export async function POST(req: NextRequest) {
     .where(eq(agents.telegramChatId, String(chatId)));
 
   if (!agent) return NextResponse.json({ ok: true });
+
+  if (hasDocument) {
+    await handleDocument(agent.id, message, chatId);
+    return NextResponse.json({ ok: true });
+  }
 
   await ingestTelegramMessage({
     agentId: agent.id,
