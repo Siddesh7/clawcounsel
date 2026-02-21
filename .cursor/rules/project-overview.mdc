@@ -1,0 +1,33 @@
+---
+description: ClawCounsel project architecture and conventions
+alwaysApply: true
+---
+
+# ClawCounsel — AI Legal Counsel SaaS
+
+Single Next.js 16 app (no separate backend). All code lives in `frontend/`.
+
+## Architecture
+
+- **Pages**: `frontend/app/` — Next.js App Router with terminal-style UI
+- **API routes**: `frontend/app/api/` — all server logic as Next.js route handlers
+- **Database**: SQLite via `better-sqlite3` + Drizzle ORM (`frontend/lib/db/`)
+- **Services**: `frontend/lib/services/` — agent AI, identity generation, knowledge ingestion
+- **AI engine**: OpenClaw CLI (`openclaw agent --local`) with Anthropic SDK fallback
+- **OpenClaw workspace**: `openclaw/workspace/` — agent persona, skills, documents
+
+## Key Conventions
+
+- Use `pnpm` (not npm/yarn)
+- TypeScript strict, kebab-case filenames
+- Component files under 120 lines
+- Constants in dedicated files (`lib/constants.ts`)
+- Terminal aesthetic: green-on-black, monospace, no emojis in UI
+- API routes return `NextResponse.json()` — no Fastify, no Express
+- DB schema uses `sqliteTable` from `drizzle-orm/sqlite-core`
+
+## Running
+
+```bash
+cd frontend && pnpm dev  # starts everything on :3000
+```

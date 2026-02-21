@@ -1,0 +1,37 @@
+---
+description: Next.js API route conventions for ClawCounsel
+globs: frontend/app/api/**/*.ts
+alwaysApply: false
+---
+
+# API Route Patterns
+
+All server logic is in Next.js API routes (`app/api/`). No separate backend.
+
+## Route Handler Pattern
+
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { agents } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const [row] = await db.select().from(agents).where(eq(agents.id, id));
+  if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json({ agent: row });
+}
+```
+
+## Rules
+
+- Always `await params` (Next.js 16 async params)
+- Return `NextResponse.json()` for all responses
+- Import DB from `@/lib/db`, schema from `@/lib/db/schema`
+- File uploads use native `req.formData()`, not multer/multipart plugins
+- `better-sqlite3` is synchronous under the hood — Drizzle wraps it, but no connection pooling needed
+- Long-running tasks (monitoring sweeps) fire-and-forget with `.catch()` — don't block the response

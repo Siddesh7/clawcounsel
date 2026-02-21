@@ -1,0 +1,47 @@
+---
+description: SQLite + Drizzle ORM conventions
+globs: frontend/lib/db/**/*.ts
+alwaysApply: false
+---
+
+# Database Layer
+
+SQLite via `better-sqlite3` with Drizzle ORM. DB file at `frontend/data/clawcounsel.db`.
+
+## Schema Conventions
+
+```typescript
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+
+// Primary keys: text with UUID default
+text("id").primaryKey().$defaultFn(() => crypto.randomUUID())
+
+// Timestamps: integer with timestamp_ms mode
+integer("created_at", { mode: "timestamp_ms" }).$defaultFn(() => new Date())
+
+// Booleans: integer with boolean mode
+integer("onboarding_complete", { mode: "boolean" }).default(false)
+
+// JSON: text with json mode
+text("metadata", { mode: "json" }).$type<Record<string, unknown>>().default({})
+```
+
+## Adding New Tables
+
+1. Add the `sqliteTable` definition in `lib/db/schema.ts`
+2. Add the matching `CREATE TABLE IF NOT EXISTS` SQL in `lib/db/index.ts`
+3. No migration step needed — tables auto-create on startup
+
+## Queries
+
+Use Drizzle query builder. No raw SQL in route handlers.
+
+```typescript
+import { db } from "@/lib/db";
+import { agents } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+
+const [agent] = await db.select().from(agents).where(eq(agents.id, id));
+await db.insert(agents).values({ ... }).returning();
+await db.update(agents).set({ ... }).where(eq(agents.id, id));
+```

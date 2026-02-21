@@ -10,8 +10,9 @@ const WORKSPACE_DIR =
 const DOCS_DIR = resolve(WORKSPACE_DIR, "documents");
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
-  const pdfParse = (await import("pdf-parse")).default;
-  const result = await pdfParse(buffer);
+  const { PDFParse } = await import("pdf-parse");
+  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+  const result = await parser.getText();
   return result.text;
 }
 
