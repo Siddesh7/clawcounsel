@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 const BOOT_LINES = [
-  "sys: openclaw-node v0.1.0 initializing...",
+  "sys: clawcounsel v0.1.0 initializing...",
   "sys: iNFT ownership framework   [ OK ]",
   "sys: OG Labs model provider      [ OK ]",
   "sys: legal inference engine      [ OK ]",
@@ -138,7 +138,7 @@ export default function Page() {
               letterSpacing: "0.1em",
             }}
           >
-            subscribe with USDC · own your agent via iNFT · slack integration included
+            subscribe with USDC · own your agent via iNFT · telegram integration included
           </div>
         </div>
       </div>
@@ -157,7 +157,7 @@ export default function Page() {
         }}
       >
         <span>© 2025 CLAWCOUNSEL · ALL RIGHTS RESERVED</span>
-        <span>OG LABS iNFT · KITE · CLAUDE</span>
+        <span>OG LABS iNFT · BASE · CLAUDE</span>
       </div>
     </main>
   );

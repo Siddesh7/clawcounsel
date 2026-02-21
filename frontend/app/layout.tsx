@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { VT323, IBM_Plex_Mono } from "next/font/google";
+import { Providers } from "./providers";
 import "./globals.css";
 
 const vt323 = VT323({
@@ -29,7 +30,7 @@ export default function RootLayout({
       <body className="antialiased">
         {/* Scanlines overlay */}
         <div className="scanlines" aria-hidden="true" />
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
