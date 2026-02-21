@@ -19,10 +19,15 @@ export default function Page() {
     const timers: ReturnType<typeof setTimeout>[] = [];
     BOOT_LINES.forEach((_, i) => {
       timers.push(
-        setTimeout(() => setVisibleLines((n) => Math.max(n, i + 1)), 300 + i * 380)
+        setTimeout(
+          () => setVisibleLines((n) => Math.max(n, i + 1)),
+          300 + i * 380,
+        ),
       );
     });
-    timers.push(setTimeout(() => setReady(true), 300 + BOOT_LINES.length * 380 + 200));
+    timers.push(
+      setTimeout(() => setReady(true), 300 + BOOT_LINES.length * 380 + 200),
+    );
     return () => timers.forEach(clearTimeout);
   }, []);
 
@@ -38,9 +43,8 @@ export default function Page() {
     >
       {/* ── Status Bar ───────────────────────────────────── */}
       <div className="term-statusbar">
-        <span>CLAWCOUNSEL OS  ·  BUILD 0.1.0</span>
+        <span>CLAWCOUNSEL OS · BUILD 0.1.0</span>
         <span style={{ display: "flex", gap: 24 }}>
-          <span>AGENTS: 0</span>
           <span style={{ color: "#00ff41" }}>● ONLINE</span>
         </span>
       </div>
@@ -80,7 +84,8 @@ export default function Page() {
               textTransform: "uppercase",
             }}
           >
-            AI Legal Counsel Protocol · On-Chain Ownership · Powered by OG Labs iNFT
+            AI Legal Counsel Protocol · On-Chain Ownership · Powered by OG Labs
+            iNFT
           </div>
         </div>
 
@@ -100,14 +105,21 @@ export default function Page() {
               className="boot-line"
               style={{
                 animationDelay: "0ms",
-                color: i === visibleLines - 1 ? "var(--term-green)" : "var(--term-green-mid)",
+                color:
+                  i === visibleLines - 1
+                    ? "var(--term-green)"
+                    : "var(--term-green-mid)",
                 padding: "2px 0",
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
               }}
             >
-              <span style={{ color: "var(--term-green-dim)", userSelect: "none" }}>▸</span>
+              <span
+                style={{ color: "var(--term-green-dim)", userSelect: "none" }}
+              >
+                ▸
+              </span>
               {line}
             </div>
           ))}
@@ -126,7 +138,14 @@ export default function Page() {
           }}
         >
           <Link href="/deploy">
-            <button className="term-btn" style={{ fontSize: 15, padding: "12px 48px", letterSpacing: "0.2em" }}>
+            <button
+              className="term-btn"
+              style={{
+                fontSize: 15,
+                padding: "12px 48px",
+                letterSpacing: "0.2em",
+              }}
+            >
               <span>DEPLOY YOUR AGENT →</span>
             </button>
           </Link>
@@ -138,7 +157,8 @@ export default function Page() {
               letterSpacing: "0.1em",
             }}
           >
-            pay with OG · own your agent via iNFT · telegram integration included
+            pay with OG · own your agent via iNFT · telegram integration
+            included
           </div>
         </div>
       </div>
@@ -156,7 +176,7 @@ export default function Page() {
           letterSpacing: "0.08em",
         }}
       >
-        <span>© 2025 CLAWCOUNSEL · ALL RIGHTS RESERVED</span>
+        <span>© 2026 CLAWCOUNSEL · ALL RIGHTS RESERVED</span>
         <span>OG LABS iNFT · 0G · CLAUDE</span>
       </div>
     </main>

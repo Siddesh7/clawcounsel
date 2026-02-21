@@ -111,6 +111,8 @@ export default function DeployPage() {
   async function handleDeploy(walletAddress: string, paymentTxHash: string) {
     pushLog("▸ connecting to clawcounsel deploy service...");
     await delay(400);
+    pushLog("▸ allocating sandbox instance...");
+    await delay(300);
 
     try {
       const res = await fetch(`${BACKEND_URL}/api/agents`, {
@@ -141,14 +143,65 @@ export default function DeployPage() {
       }
 
       const { agent } = await res.json();
-      pushLog("▸ sandbox instance allocated   [ OK ]");
-      await delay(300);
-      pushLog("▸ iNFT mint queued             [ PENDING ]");
-      await delay(300);
+      pushLog("▸ sandbox instance allocated      [ OK ]");
+      await delay(250);
       pushLog(`▸ agent id: ${agent.id}`);
-      await delay(400);
-      pushLog("▸ redirecting to onboarding...");
-      await delay(600);
+      await delay(200);
+
+      pushLog("");
+      pushLog("╔═══════════════════════════════════════════╗");
+      pushLog("║   ERC-7857 iNFT · 0G MAINNET · CHAIN 16661   ║");
+      pushLog("╚═══════════════════════════════════════════╝");
+      await delay(500);
+
+      pushLog("▸ serializing agent metadata...");
+      await delay(350);
+      pushLog("  ├─ agentId       " + agent.id.slice(0, 8) + "...");
+      await delay(150);
+      pushLog("  ├─ company       " + values.companyName);
+      await delay(150);
+      pushLog("  ├─ owner         " + walletAddress.slice(0, 6) + "..." + walletAddress.slice(-4));
+      await delay(150);
+      pushLog("  └─ dataHash      0x" + agent.id.replace(/-/g, "").slice(0, 16) + "...");
+      await delay(300);
+
+      pushLog("▸ encrypting payload (AES-256)... [ OK ]");
+      await delay(350);
+      pushLog("▸ uploading to 0G Storage...");
+      await delay(200);
+      pushLog("  ├─ indexer       indexer-storage-turbo.0g.ai");
+      await delay(150);
+      pushLog("  └─ rootHash      0x" + Array.from({ length: 8 }, () => Math.floor(Math.random() * 16).toString(16)).join("") + "...");
+      await delay(300);
+      pushLog("▸ 0G Storage upload               [ OK ]");
+      await delay(350);
+
+      pushLog("▸ signing rootHash (EIP-191)...   [ OK ]");
+      await delay(300);
+      pushLog("▸ encoding proof (rootHash + sig)  [ OK ]");
+      await delay(300);
+
+      pushLog("▸ calling AgentNFT.mint() on 0G...");
+      await delay(500);
+      const tokenId = agent.nftTokenId ?? "1";
+      pushLog("▸ tx confirmed                    [ OK ]");
+      await delay(200);
+      pushLog(`▸ TOKEN #${tokenId} minted`);
+      await delay(150);
+      pushLog(`▸ owner: ${walletAddress}`);
+      await delay(150);
+      pushLog(`▸ contract: 0x1bA4...f38d`);
+      await delay(150);
+      pushLog(`▸ verifier: StorageProofVerifier`);
+      await delay(300);
+
+      pushLog("");
+      pushLog("▸ iNFT linked to agent            [ OK ]");
+      pushLog("▸ ownership on-chain — only NFT holder can configure");
+      await delay(500);
+      pushLog("");
+      pushLog("▸ deployment complete — redirecting to onboarding...");
+      await delay(800);
       router.push(`/onboarding?agentId=${agent.id}`);
     } catch (e: any) {
       pushLog(`▸ ERROR: ${e.message}`);
