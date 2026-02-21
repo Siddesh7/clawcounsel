@@ -156,8 +156,8 @@ export default function Page() {
           letterSpacing: "0.08em",
         }}
       >
-        <span>© 2025 CLAWCOUNSEL · ALL RIGHTS RESERVED</span>
-        <span>OG LABS iNFT · BASE · CLAUDE</span>
+        <span>© 2026 CLAWCOUNSEL · ALL RIGHTS RESERVED</span>
+        <span>OG LABS iNFT · KITE AI · CLAUDE</span>
       </div>
     </main>
   );

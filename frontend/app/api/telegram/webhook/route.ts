@@ -156,6 +156,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    // Release this chat from any other agent that currently holds it
+    await db
+      .update(agents)
+      .set({ telegramChatId: null, status: "pending" })
+      .where(eq(agents.telegramChatId, String(chatId)));
+
     await db
       .update(agents)
       .set({
