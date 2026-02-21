@@ -105,6 +105,8 @@ TELEGRAM_BOT_USERNAME=clawcounselBot   # your bot's username (without @)
 WEBHOOK_SECRET=some-secret-string      # any string, used to verify Telegram webhooks
 ```
 
+For 0G INFT (testnet): set `NEXT_PUBLIC_0G_EXPLORER_URL` to the testnet explorer (`https://chainscan-galileo.0g.ai`) so "View on explorer" and tx links open on the correct network. Mainnet default is `https://chainscan.0g.ai`.
+
 ## Running Locally
 
 ```bash
