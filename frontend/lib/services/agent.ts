@@ -3,7 +3,7 @@ import { spawn } from "child_process";
 import { db } from "@/lib/db";
 import { conversations, onboardingData, alerts, agents } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { retrieveContext } from "./ingestion";
+import { retrieveContext, retrieveDocumentContext, listDocuments } from "./ingestion";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -94,22 +94,42 @@ export async function askAgent(
     .from(agents)
     .where(eq(agents.id, agentId));
 
+  const docs = await listDocuments(agentId);
+  const docContext = await retrieveDocumentContext(agentId, question);
+
   let contextPrefix = "";
   if (agent) {
     contextPrefix += `Company: ${agent.companyName}\n`;
     if (agent.agentCodename) {
-      contextPrefix += `Agent: ${agent.agentCodename} (${agent.agentTone ?? "direct, concise"})\n`;
+      contextPrefix += `You are: ${agent.agentCodename}\n`;
+      contextPrefix += `Tone: ${agent.agentTone ?? "direct, concise"}\n`;
       contextPrefix += `Specialty: ${agent.agentSpecialty ?? ""}\n`;
+      if (agent.agentTagline) contextPrefix += `Tagline: "${agent.agentTagline}"\n`;
     }
   }
   if (claim) {
-    if (claim.legalConcerns) contextPrefix += `Focus: ${claim.legalConcerns}\n`;
-    if (claim.industry) contextPrefix += `Industry: ${claim.industry}\n`;
+    contextPrefix += "\nCOMPANY PROFILE:\n";
+    if (claim.industry) contextPrefix += `- Industry: ${claim.industry}\n`;
+    if (claim.legalConcerns) contextPrefix += `- Legal concerns: ${claim.legalConcerns}\n`;
+    if (claim.documentTypes) contextPrefix += `- Document types: ${claim.documentTypes}\n`;
+    if (claim.activeContracts) contextPrefix += `- Active contracts: ${claim.activeContracts}\n`;
+    if (claim.monitoringPriorities) contextPrefix += `- Monitoring priorities: ${claim.monitoringPriorities}\n`;
   }
 
-  const fullMessage = contextPrefix
-    ? `[Company Context]\n${contextPrefix}\n[Question from @${userId}]\n${question}`
-    : question;
+  if (docs.length > 0) {
+    contextPrefix += `\nAVAILABLE DOCUMENTS (${docs.length}):\n`;
+    for (const doc of docs) {
+      contextPrefix += `- ${doc.name}\n`;
+    }
+    contextPrefix += "\nUse the read tool on files in documents/ for full content. Relevant excerpts below.\n";
+  }
+
+  let fullMessage = `[Company Context]\n${contextPrefix}`;
+  if (docContext) {
+    fullMessage += `\n[Relevant Document Excerpts]\n${docContext}\n`;
+  }
+  fullMessage += `\n[Question from @${userId}]\n${question}`;
+  fullMessage += `\n\nIMPORTANT: Answer specifically about THIS company using the document excerpts above. Cite document names and specific sections. Do NOT give generic advice.`;
 
   const openclawResponse = await runOpenClaw(fullMessage, agentId);
 
@@ -121,8 +141,8 @@ export async function askAgent(
     return openclawResponse;
   }
 
-  console.log("[agent] OpenClaw unavailable, using Anthropic SDK fallback");
-  return askAgentFallback(agentId, userId, chatId, question);
+  console.log("[agent] openclaw unavailable, using Anthropic SDK fallback");
+  return askAgentFallback(agentId, userId, chatId, question, docContext);
 }
 
 async function askAgentFallback(
@@ -130,6 +150,7 @@ async function askAgentFallback(
   userId: string,
   chatId: string,
   question: string,
+  preloadedDocContext?: string,
 ): Promise<string> {
   const [onboarding] = await db
     .select()
@@ -141,7 +162,8 @@ async function askAgentFallback(
     .from(agents)
     .where(eq(agents.id, agentId));
 
-  const context = await retrieveContext(agentId, question);
+  const chatContext = await retrieveContext(agentId, question);
+  const docContext = preloadedDocContext ?? await retrieveDocumentContext(agentId, question);
 
   const history = await db
     .select()
@@ -155,26 +177,53 @@ async function askAgentFallback(
     content: c.content,
   }));
 
-  let identityBlock = "";
-  if (agent?.agentCodename) {
-    identityBlock = `\n## Your Identity\nCodename: ${agent.agentCodename}\nSpecialty: ${agent.agentSpecialty ?? ""}\nTone: ${agent.agentTone ?? "direct, concise"}\nAdopt this codename as your name and match this tone.\n`;
+  const agentName = agent?.agentCodename ?? "ClawCounsel";
+  const tagline = agent?.agentTagline ? ` "${agent.agentTagline}"` : "";
+  const companyName = agent?.companyName ?? "the company";
+
+  const systemPrompt = `You are *${agentName}*, the dedicated AI legal counsel for *${companyName}*.${tagline}
+${agent?.agentTone ? `Communication style: ${agent.agentTone}` : ""}
+${agent?.agentSpecialty ? `Your specialty: ${agent.agentSpecialty}` : ""}
+
+COMPANY PROFILE:
+${onboarding ? `- Industry: ${onboarding.industry ?? "not specified"}
+- Legal concerns: ${onboarding.legalConcerns ?? "general"}
+- Document types: ${onboarding.documentTypes ?? "various"}
+- Active contracts: ${onboarding.activeContracts ?? "unknown"}
+- Monitoring: ${onboarding.monitoringPriorities ?? "general"}` : "(No onboarding data)"}
+
+RESPONSE RULES:
+1. You ONLY answer about ${companyName}. Every answer must reference their specific documents, clauses, dates, or parties.
+2. If the question relates to their uploaded documents, cite the document name and specific section/clause (e.g. "Per your _Developer Grant Agreement_ Section 4.2...").
+3. If you don't have data to answer, say so clearly and suggest what document or info they should provide.
+4. Be concise: 10-15 lines max. Get to the point.
+5. Flag risks with severity: LOW / MEDIUM / HIGH / CRITICAL
+6. End with ONE focused follow-up question.
+7. Never give generic legal advice. Never say "typically" or "in general" — always ground it in their data.
+
+TELEGRAM FORMATTING (STRICT):
+- NEVER use # headers, markdown tables (|---|), or horizontal rules (---)
+- Use *bold* for emphasis (single asterisks)
+- Use _italic_ for secondary emphasis
+- Use line breaks and bullet points for structure
+- Use CAPS for section labels (e.g. RISK LEVEL: HIGH)`;
+
+  let dataBlock = "";
+
+  if (docContext) {
+    dataBlock += `\n\nCOMPANY DOCUMENTS (excerpts relevant to the question):\n${docContext}`;
   }
-
-  const onboardingBlock = onboarding
-    ? `\n## Company Context\n- Industry: ${onboarding.industry ?? "—"}\n- Legal Concerns: ${onboarding.legalConcerns ?? "—"}\n- Document Types: ${onboarding.documentTypes ?? "—"}\n- Monitoring: ${onboarding.monitoringPriorities ?? "—"}\n`
-    : "";
-
-  const contextBlock = context
-    ? `\n## Company Data\n${context}\n`
-    : "\n## Company Data\n(No data indexed yet.)\n";
-
-  const agentName = agent?.agentCodename ?? "OpenClaw";
-  const systemPrompt = `You are ${agentName}, an AI legal counsel agent. Answer legal questions grounded in the company's data. Be precise, cite evidence, flag risks with severity levels. Format for Telegram (plain text).`;
+  if (chatContext) {
+    dataBlock += `\n\nRECENT COMMUNICATIONS:\n${chatContext}`;
+  }
+  if (!docContext && !chatContext) {
+    dataBlock += "\n\n(No company documents or communications indexed yet. Tell the user to upload documents for personalized legal counsel.)";
+  }
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 1024,
-    system: systemPrompt + identityBlock + onboardingBlock + contextBlock,
+    system: systemPrompt + dataBlock,
     messages: [...recentMessages, { role: "user", content: question }],
   });
 

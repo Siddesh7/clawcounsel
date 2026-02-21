@@ -25,7 +25,7 @@ function OnboardingContent() {
   const [uploadLog, setUploadLog] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? "OpenClawBot";
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? "clawcounselBot";
 
   useEffect(() => {
     if (phase !== "telegram" || !agentId || connected) return;
@@ -135,7 +135,7 @@ function OnboardingContent() {
                     <div style={{ display: "flex", gap: 12 }}>
                       <div style={{ fontSize: 11, color: "var(--term-amber)", letterSpacing: "0.1em", flexShrink: 0, paddingTop: 1 }}>03</div>
                       <div>
-                        <div style={{ fontSize: 13, color: "var(--term-green)", marginBottom: 4 }}>OpenClaw starts learning</div>
+                        <div style={{ fontSize: 13, color: "var(--term-green)", marginBottom: 4 }}>ClawCounsel starts learning</div>
                         <div style={{ fontSize: 11, color: "var(--term-green-mid)" }}>The agent will index all future messages and answer questions via <span style={{ color: "var(--term-green)" }}>/ask</span></div>
                       </div>
                     </div>

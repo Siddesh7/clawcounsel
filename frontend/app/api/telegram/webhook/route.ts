@@ -14,15 +14,28 @@ async function send(
   text: string,
   replyToMessageId?: number,
 ) {
-  await fetch(TG("sendMessage"), {
+  const res = await fetch(TG("sendMessage"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: chatId,
       text,
+      parse_mode: "Markdown",
       reply_to_message_id: replyToMessageId,
     }),
   });
+
+  if (!res.ok) {
+    await fetch(TG("sendMessage"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        reply_to_message_id: replyToMessageId,
+      }),
+    });
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -78,9 +91,15 @@ export async function POST(req: NextRequest) {
       })
       .where(eq(agents.id, agentId));
 
+    const codename = agent.agentCodename ?? "ClawCounsel";
+    const tagline = agent.agentTagline ? `\n_${agent.agentTagline}_` : "";
+    const specialty = agent.agentSpecialty
+      ? `\nSpecialty: *${agent.agentSpecialty}*`
+      : "";
+
     await send(
       chatId,
-      `OpenClaw is now connected to ${agent.companyName}.\n\nI'll learn from every message in this group and build a legal knowledge base for your company.\n\nAsk me anything by tagging me or using /ask — I'll answer based on your company's contracts, policies, and communications.`,
+      `*${codename}* online. Connected to *${agent.companyName}*.${tagline}${specialty}\n\nI'll ingest every message here and build your legal knowledge base.\n\nAsk me anything — /ask or tag me directly.`,
     );
 
     return NextResponse.json({ ok: true });
@@ -123,7 +142,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    await send(chatId, "Analyzing...", message.message_id);
+    const loadingName = agent.agentCodename ?? "Agent";
+    await send(chatId, `_${loadingName} scanning documents..._`, message.message_id);
 
     try {
       const answer = await askAgent(

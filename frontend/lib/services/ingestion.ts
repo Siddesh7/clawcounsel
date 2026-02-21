@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { knowledgeItems } from "@/lib/db/schema";
+import { knowledgeItems, documents } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 export async function ingestTelegramMessage({
@@ -48,6 +48,67 @@ export async function ingestTelegramMessage({
   });
 }
 
+export async function retrieveDocumentContext(
+  agentId: string,
+  query: string,
+  maxChars = 12000,
+): Promise<string> {
+  const docs = await db
+    .select()
+    .from(documents)
+    .where(eq(documents.agentId, agentId));
+
+  if (docs.length === 0) return "";
+
+  const keywords = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 3);
+
+  const chunks: Array<{ source: string; text: string; score: number }> = [];
+
+  for (const doc of docs) {
+    if (!doc.content) continue;
+    const paragraphs = doc.content.split(/\n{2,}/);
+
+    for (const para of paragraphs) {
+      const trimmed = para.trim();
+      if (trimmed.length < 20) continue;
+
+      const lower = trimmed.toLowerCase();
+      const score = keywords.reduce((s, kw) => {
+        const matches = lower.split(kw).length - 1;
+        return s + matches;
+      }, 0);
+
+      chunks.push({ source: doc.name, text: trimmed, score });
+    }
+  }
+
+  chunks.sort((a, b) => b.score - a.score);
+  const topChunks = chunks.filter((c) => c.score > 0).slice(0, 30);
+
+  if (topChunks.length < 5) {
+    const fallback = chunks
+      .filter((c) => !topChunks.includes(c))
+      .slice(0, 10);
+    topChunks.push(...fallback);
+  }
+
+  let output = "";
+  let currentDoc = "";
+  for (const chunk of topChunks) {
+    if (output.length + chunk.text.length > maxChars) break;
+    if (chunk.source !== currentDoc) {
+      currentDoc = chunk.source;
+      output += `\n--- ${chunk.source} ---\n`;
+    }
+    output += chunk.text + "\n\n";
+  }
+
+  return output.trim();
+}
+
 export async function retrieveContext(
   agentId: string,
   query: string,
@@ -88,4 +149,11 @@ export async function retrieveContext(
         `[${i.chatTitle ?? i.source} | @${i.username ?? i.userId}]: ${i.content}`,
     )
     .join("\n");
+}
+
+export async function listDocuments(agentId: string) {
+  return db
+    .select({ id: documents.id, name: documents.name, type: documents.type })
+    .from(documents)
+    .where(eq(documents.agentId, agentId));
 }

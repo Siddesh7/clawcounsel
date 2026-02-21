@@ -67,11 +67,21 @@ export default function DeployPage() {
       pushLog(`▸ wallet: ${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`);
       await delay(300);
 
-      await wallet.switchChain(base.id);
+      try {
+        await wallet.switchChain(base.id);
+      } catch {
+        pushLog("▸ please switch to Base in your wallet...");
+      }
+      await delay(500);
+
+      const provider = await wallet.getEthereumProvider();
+      await provider.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x2105" }],
+      });
       pushLog("▸ switched to Base Mainnet");
       await delay(200);
 
-      const provider = await wallet.getEthereumProvider();
       const walletClient = createWalletClient({
         chain: base,
         transport: custom(provider),
@@ -107,7 +117,7 @@ export default function DeployPage() {
   }
 
   async function handleDeploy(walletAddress: string, paymentTxHash: string) {
-    pushLog("▸ connecting to openclaw deploy service...");
+    pushLog("▸ connecting to clawcounsel deploy service...");
     await delay(400);
 
     try {
@@ -173,7 +183,7 @@ export default function DeployPage() {
         <div style={{ width: "100%", maxWidth: 560 }}>
           <div style={{ border: "1px solid var(--term-green-dim)", boxShadow: "0 0 40px rgba(0,255,65,0.05), inset 0 0 60px rgba(0,0,0,0.4)" }}>
             <div style={{ borderBottom: "1px solid var(--term-green-dim)", padding: "8px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(0,255,65,0.04)" }}>
-              <span className="term-glow-static" style={{ fontSize: 13, letterSpacing: "0.15em" }}>OPENCLAW DEPLOY</span>
+              <span className="term-glow-static" style={{ fontSize: 13, letterSpacing: "0.15em" }}>CLAWCOUNSEL DEPLOY</span>
               <span style={{ fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.1em" }}>BASE MAINNET</span>
             </div>
 
@@ -203,7 +213,7 @@ export default function DeployPage() {
                 <>
                   <div style={{ textAlign: "center", padding: "8px 0" }}>
                     <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "var(--term-green-mid)", marginBottom: 12 }}>AGENT SUBSCRIPTION</div>
-                    <div className="term-glow-static" style={{ fontSize: 28, marginBottom: 4 }}>50 USDC</div>
+                    <div className="term-glow-static" style={{ fontSize: 28, marginBottom: 4 }}>{USDC_AMOUNT} USDC</div>
                     <div style={{ fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.1em" }}>on Base Mainnet · one-time deployment fee</div>
                   </div>
 
@@ -236,7 +246,7 @@ export default function DeployPage() {
                       </button>
                     ) : (
                       <button className="term-btn" style={{ flex: 1, fontSize: 13, letterSpacing: "0.15em", padding: "12px" }} onClick={handlePayment}>
-                        <span>[ PAY 50 USDC ]</span>
+                        <span>[ PAY {USDC_AMOUNT} USDC ]</span>
                       </button>
                     )}
                   </div>
@@ -257,7 +267,7 @@ export default function DeployPage() {
           </div>
 
           <div style={{ marginTop: 16, fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.08em", textAlign: "center" }}>
-            ▸ deploying creates a sandboxed openclaw instance · iNFT minted on OG Labs · billed in USDC
+            ▸ deploying creates a sandboxed clawcounsel instance · iNFT minted on OG Labs · billed in USDC
           </div>
         </div>
       </div>

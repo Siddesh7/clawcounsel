@@ -89,7 +89,7 @@ export default function AgentDetailPage() {
       <div style={{ flex: 1, maxWidth: 760, width: "100%", margin: "0 auto", padding: "32px 20px", display: "flex", flexDirection: "column", gap: 28 }}>
         <div>
           <div className="font-display term-glow-static" style={{ fontSize: 36, letterSpacing: "0.05em", lineHeight: 1 }}>
-            {agent?.agentCodename ?? agent?.companyName ?? "OPENCLAW"}
+            {agent?.agentCodename ?? agent?.companyName ?? "CLAWCOUNSEL"}
           </div>
           {agent?.agentCodename && (
             <div style={{ fontSize: 13, color: "var(--term-green)", letterSpacing: "0.1em", marginTop: 6 }}>
@@ -207,11 +207,11 @@ export default function AgentDetailPage() {
 
             {agent?.telegramChatId ? (
               <div style={{ borderTop: "1px solid var(--term-border)", paddingTop: 20, fontSize: 12, color: "var(--term-green-mid)", letterSpacing: "0.08em" }}>
-                ▸ OpenClaw is live in <span style={{ color: "var(--term-green)" }}>{agent.telegramChatTitle ?? "your Telegram group"}</span>. Use <span style={{ color: "var(--term-green)" }}>/ask</span> to ask legal questions.
+                ▸ ClawCounsel is live in <span style={{ color: "var(--term-green)" }}>{agent.telegramChatTitle ?? "your Telegram group"}</span>. Use <span style={{ color: "var(--term-green)" }}>/ask</span> to ask legal questions.
               </div>
             ) : (
               <div style={{ borderTop: "1px solid var(--term-border)", paddingTop: 20, fontSize: 12, color: "var(--term-amber)", letterSpacing: "0.08em" }}>
-                ▸ Telegram not connected — add <span style={{ color: "var(--term-green)" }}>@{process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? "OpenClawBot"}</span> to your group and send <span style={{ color: "var(--term-green)" }}>/connect {agentId}</span>
+                ▸ Telegram not connected — add <span style={{ color: "var(--term-green)" }}>@{process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? "clawcounselBot"}</span> to your group and send <span style={{ color: "var(--term-green)" }}>/connect {agentId}</span>
               </div>
             )}
           </>
@@ -220,7 +220,7 @@ export default function AgentDetailPage() {
 
       <div style={{ borderTop: "1px solid var(--term-border)", padding: "10px 16px", display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.08em" }}>
         <span>CLAWCOUNSEL OS</span>
-        <span>OPENCLAW · BASE · CLAUDE</span>
+        <span>CLAWCOUNSEL · BASE · CLAUDE</span>
       </div>
     </main>
   );

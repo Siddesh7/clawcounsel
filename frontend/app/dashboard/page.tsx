@@ -58,7 +58,7 @@ export default function DashboardPage() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
           <div>
             <div className="font-display term-glow-static" style={{ fontSize: 40, letterSpacing: "0.05em", lineHeight: 1 }}>AGENTS</div>
-            <div style={{ fontSize: 11, color: "var(--term-green-mid)", letterSpacing: "0.2em", marginTop: 4 }}>OPENCLAW DEPLOYMENTS · AI LEGAL COUNSEL</div>
+            <div style={{ fontSize: 11, color: "var(--term-green-mid)", letterSpacing: "0.2em", marginTop: 4 }}>CLAWCOUNSEL DEPLOYMENTS · AI LEGAL COUNSEL</div>
           </div>
           <Link href="/deploy">
             <button className="term-btn" style={{ fontSize: 12, padding: "8px 20px", letterSpacing: "0.15em" }}>
@@ -125,7 +125,7 @@ export default function DashboardPage() {
 
       <div style={{ borderTop: "1px solid var(--term-border)", padding: "10px 16px", display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--term-green-dim)", letterSpacing: "0.08em" }}>
         <span>CLAWCOUNSEL OS</span>
-        <span>OPENCLAW · BASE · CLAUDE</span>
+        <span>CLAWCOUNSEL · BASE · CLAUDE</span>
       </div>
     </main>
   );

@@ -39,7 +39,7 @@ clawcounsel/
 | Styling | Tailwind CSS v4 + custom terminal theme in globals.css |
 | Components | shadcn/ui |
 | Database | SQLite via better-sqlite3 + Drizzle ORM |
-| AI Engine | OpenClaw CLI (primary) + Anthropic Claude SDK (fallback) |
+| AI Engine | ClawCounsel Agent (OpenClaw CLI primary) + Anthropic Claude SDK (fallback) |
 | Wallet | Privy (embedded EVM wallets) |
 | Payments | USDC on Base Mainnet via viem |
 | Communication | Telegram Bot API |

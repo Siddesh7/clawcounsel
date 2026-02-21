@@ -1,0 +1,8 @@
+# Runtime-generated (per-company, written during onboarding)
+openclaw/workspace/COMPANY_CONTEXT.md
+
+# Uploaded legal documents (sensitive company data)
+openclaw/workspace/documents/
+
+# OS
+.DS_Store

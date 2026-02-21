@@ -4,11 +4,11 @@ Read `AGENTS.md` in the repo root for full project context.
 
 ## Quick Reference
 
-- **Single app**: Everything is in `frontend/` — Next.js 16 with API routes, SQLite, OpenClaw
+- **Single app**: Everything is in `frontend/` — Next.js 16 with API routes, SQLite, ClawCounsel agent (OpenClaw runtime)
 - **Run**: `cd frontend && pnpm dev`
 - **Package manager**: pnpm (not npm or yarn)
 - **DB**: SQLite at `frontend/data/clawcounsel.db` — auto-creates, no setup
-- **AI**: OpenClaw CLI primary, Anthropic SDK fallback
+- **AI**: ClawCounsel agent (OpenClaw CLI) primary, Anthropic SDK fallback
 
 ## Code Style
 
