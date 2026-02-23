@@ -26,6 +26,8 @@ export const agents = sqliteTable("agents", {
   agentTone: text("agent_tone"),
   agentTagline: text("agent_tagline"),
   status: text("status").notNull().default("pending"),
+  kiteWalletAddress: text("kite_wallet_address"),
+  kiteQueryCount: integer("kite_query_count").default(0),
   createdAt: createdAt(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" })
     .notNull()
@@ -86,6 +88,16 @@ export const conversations = sqliteTable("conversations", {
   userId: text("user_id").notNull(),
   role: text("role").notNull(),
   content: text("content").notNull(),
+  createdAt: createdAt(),
+});
+
+export const kiteTransactions = sqliteTable("kite_transactions", {
+  id: id(),
+  agentId: text("agent_id").notNull().references(() => agents.id),
+  txHash: text("tx_hash").notNull(),
+  direction: text("direction").notNull().default("outbound"),
+  amount: text("amount").notNull().default("0"),
+  chainId: integer("chain_id").notNull().default(2368),
   createdAt: createdAt(),
 });
 

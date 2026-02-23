@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { BACKEND_URL } from "@/lib/constants";
 import { INFTCard } from "./inft-card";
+import { KiteCard } from "./kite-card";
 import { OwnerControls } from "./owner-controls";
 
 type Alert = {
@@ -237,6 +238,7 @@ export default function AgentDetailPage() {
               onUpdate={fetchInft}
             />
 
+            <KiteCard agentId={agentId!} />
             <OwnerControls
               agentId={agentId!}
               agent={agent}

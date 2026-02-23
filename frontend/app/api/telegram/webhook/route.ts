@@ -27,7 +27,9 @@ async function send(
   });
 
   if (!res.ok) {
-    await fetch(TG("sendMessage"), {
+    const err = await res.json().catch(() => ({}));
+    console.error("[telegram] sendMessage failed:", JSON.stringify(err), "chatId:", chatId);
+    const res2 = await fetch(TG("sendMessage"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -36,6 +38,10 @@ async function send(
         reply_to_message_id: replyToMessageId,
       }),
     });
+    if (!res2.ok) {
+      const err2 = await res2.json().catch(() => ({}));
+      console.error("[telegram] sendMessage retry failed:", JSON.stringify(err2));
+    }
   }
 }
 
@@ -117,6 +123,7 @@ export async function POST(req: NextRequest) {
   const username =
     message.from?.username ?? message.from?.first_name ?? userId;
   const text = (message.text ?? message.caption ?? "") as string;
+  console.log("[telegram] incoming chatId:", chatId, "text:", text?.slice(0, 60));
   const messageId = String(message.message_id);
   const threadId = message.message_thread_id
     ? String(message.message_thread_id)
@@ -148,6 +155,12 @@ export async function POST(req: NextRequest) {
       await send(chatId, "This agent is already connected to a different group.");
       return NextResponse.json({ ok: true });
     }
+
+    // Release this chat from any other agent that currently holds it
+    await db
+      .update(agents)
+      .set({ telegramChatId: null, status: "pending" })
+      .where(eq(agents.telegramChatId, String(chatId)));
 
     await db
       .update(agents)
